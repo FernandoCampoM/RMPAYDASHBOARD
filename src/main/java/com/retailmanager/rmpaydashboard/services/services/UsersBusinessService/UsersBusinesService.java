@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.retailmanager.rmpaydashboard.enums.EmployeeRole;
+import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.DataInconsistencyException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadNoExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadYaExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.InvalidDateOrTime;
@@ -617,6 +618,9 @@ public class UsersBusinesService implements IUsersBusinessService{
         List<UsersBusiness> objUser=this.usersAppDBService.findByPasswordAndBusinessId(String.valueOf(prmEmployeeAuthentication.getPassword()), objBusiness.getBusinessId());
         if(objUser==null || objUser.isEmpty()){
             throw new EntidadNoExisteException("El Empleado con password "+prmEmployeeAuthentication.getPassword()+" no existe en la Base de datos para el Negocio "+objBusiness.getBusinessId());
+        }
+        if(terminalId!=null && objUser.get(0).getBusiness().getBusinessId()!=objBusiness.getBusinessId()){
+            throw new DataInconsistencyException("El Empleado con id "+objUser.get(0).getUserBusinessId()+" y el terminal con id: "+terminalId+" no pertenecen al mismo negocio");
         }
         if(objUser.get(0).getEnable()==false){
             throw new UserDisabled("El Empleado con password "+prmEmployeeAuthentication.getPassword()+" esta deshabilitado");

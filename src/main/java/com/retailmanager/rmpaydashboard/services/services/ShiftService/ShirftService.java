@@ -17,7 +17,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.DataInconsistencyException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadNoExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadYaExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.UserDisabled;
@@ -34,7 +36,6 @@ import com.retailmanager.rmpaydashboard.security.TokenUtils;
 import com.retailmanager.rmpaydashboard.services.DTO.SaleReportDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ShiftDTO;
 
-import jakarta.transaction.Transactional;
 
 @Service
 public class ShirftService implements IShiftService{
@@ -71,9 +72,11 @@ public class ShirftService implements IShiftService{
                 .orElseThrow(() -> new EntidadNoExisteException("User Business with ID " + shiftDTO.getUserId() + " does not exist."));
 
         // Asumo que Terminal tiene un método para buscar por deviceId (serial)
-        Terminal terminal = serviceDBTerminal.findFirstBySerial(shiftDTO.getDeviceId()) // Ajusta el nombre del método de repo si es diferente
-                .orElseThrow(() -> new EntidadNoExisteException("Terminal with device ID " + shiftDTO.getDeviceId() + " does not exist."));
-
+        Terminal terminal = serviceDBTerminal.findFirstBySerialAndBusiness(shiftDTO.getDeviceId(), userBusiness.getBusiness()) 
+                .orElseThrow(() -> new EntidadNoExisteException("Terminal with device ID " + shiftDTO.getDeviceId() + " does not exist for Business "+userBusiness.getBusiness().getBusinessId()));
+        if(terminal.getBusiness().getBusinessId() != userBusiness.getBusiness().getBusinessId()){
+            throw new DataInconsistencyException("El Empleado con id "+userBusiness.getUserBusinessId()+" y el terminal con id: "+terminal.getTerminalId()+" no pertenecen al mismo negocio");
+        }
         // 2. Verificar si ya hay un turno abierto para este usuario y terminal
         Optional<Shift> existingOpenShift = serviceDBShift.findFirstByUserBusinessAndTerminal(userBusiness, terminal);
         if (existingOpenShift.isPresent() && existingOpenShift.get().isOpenShifBalance()) {
@@ -363,6 +366,7 @@ public class ShirftService implements IShiftService{
      * @return a ResponseEntity containing the Page of ShiftDTOs matching the criteria.
      */
     @Override
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getAllShifts(Long businessId, // Nuevo parámetro obligatorio
                                             Long employeeId,
                                             String serialNumber,
@@ -401,9 +405,13 @@ public class ShirftService implements IShiftService{
         try {
             if (startDate != null && !startDate.isEmpty()) {
                 startDateTime = LocalDate.parse(startDate).atStartOfDay();
+                System.out.println("Parsed startDateTime: " + startDateTime); // Debugging line
+                System.out.println("Date Start to parse: " + startDate); // Debugging line
             }
             if (endDate != null && !endDate.isEmpty()) {
                 endDateTime = LocalDate.parse(endDate).atTime(23, 59, 59);
+                System.out.println("Parsed endDateTime: " + endDateTime); // Debugging line
+                System.out.println("Date End to parse: " + endDate); // Debugging line
             }
         } catch (DateTimeParseException e) {
             throw new IllegalArgumentException("Invalid date format. Please useAPAC-MM-dd for startDate and endDate.");

@@ -120,7 +120,8 @@ public class ShiftController {
      */
     @GetMapping
     public ResponseEntity<?> getAllShifts(
-        @RequestParam @NotNull(message = "Business ID cannot be null") Long businessId, // Obligatorio y validado
+        @RequestParam @NotNull(message = "Business ID cannot be null") 
+        Long businessId, // Obligatorio y validado
             @RequestParam(required = false) Long employeeId,
             @RequestParam(required = false) String serialNumber,
             @RequestParam(required = false) String startDate,

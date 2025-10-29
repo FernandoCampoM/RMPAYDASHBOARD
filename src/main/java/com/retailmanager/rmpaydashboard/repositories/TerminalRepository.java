@@ -19,7 +19,9 @@ public interface TerminalRepository extends CrudRepository<Terminal, String> {
     Optional<Terminal> findOneBySerial(String serial);
     
     List<Terminal> findByBusiness(Business business);
+    
     Optional<Terminal> findFirstBySerial(String serial);
+    Optional<Terminal> findFirstBySerialAndBusiness(String serial,Business business);
     @Modifying
     @Query("UPDATE Terminal u SET u.enable = :enable WHERE u.terminalId = :terminalId")
     void updateEnable(String terminalId, boolean enable);
