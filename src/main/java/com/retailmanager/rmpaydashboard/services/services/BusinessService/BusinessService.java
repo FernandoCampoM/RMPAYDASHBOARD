@@ -709,13 +709,13 @@ public class BusinessService implements IBusinessService {
              objBusiness.setDiscount(prmBusiness.getDiscount());
              objBusiness.setName(prmBusiness.getName());
              objBusiness.setServiceId(serviceId);
-             if(objBusiness.getLogo()!=prmBusiness.getLogo()){
+             if(!objBusiness.getLogo().equals(prmBusiness.getLogo())){
                 if(objBusiness.getLogo()!=null){
                     this.fileService.deleteImage(objBusiness.getLogo());
                 }
                 objBusiness.setLogo(prmBusiness.getLogo());
              }
-             if(objBusiness.getLogoAth()!=prmBusiness.getLogoAth()){
+             if(!objBusiness.getLogoAth().equals(prmBusiness.getLogoAth())){
                 if(objBusiness.getLogoAth()!=null){
                     this.fileService.deleteImage(objBusiness.getLogoAth());
                 }

@@ -585,6 +585,8 @@ public class ReportService implements IReportService {
         HashMap<String,Object> dailySummaryDTO=new HashMap<>();
         if(dailySummaryV[0]!=null){
             dailySummaryDTO.put("totalSales", Double.parseDouble(dailySummaryV[0].toString()));
+        }else{
+            dailySummaryDTO.put("totalSales", 0.0);
         }
         Double totalTax=0.0;
         if(dailySummaryV[2]!=null){
@@ -598,12 +600,18 @@ public class ReportService implements IReportService {
         }
         if(dailySummaryV[2]!=null){
             dailySummaryDTO.put("totalTax", totalTax);
+        }else{
+            dailySummaryDTO.put("totalTax", 0.0);
         }
         if(dailySummaryV[6]!=null){
             dailySummaryDTO.put("grossProfit", Double.parseDouble(dailySummaryV[6].toString()));
+        }else{
+            dailySummaryDTO.put("grossProfit", 0.0);
         }
         if(dailySummaryV[7]!=null){
             dailySummaryDTO.put("totalTips", Double.parseDouble(dailySummaryV[7].toString()));
+        }else{
+            dailySummaryDTO.put("totalTips", 0.0);
         }
         ///////////Info para el reporte del ANUAL
         Object [] annualSummary=this.serviceDBSale.annualSummary(businessId,startDate.getYear());
@@ -634,6 +642,9 @@ public class ReportService implements IReportService {
                 }else{
                     annualSummaryDTO.put("totalSalesStatus",0);
                 }
+            }else{
+                annualSummaryDTO.put("totalSales", 0.0);
+                annualSummaryDTO.put("totalSalesStatus", 0);
             }
             Double totalTaxAnnual=0.0;
             if(annualSummaryV[2]!=null){
@@ -682,6 +693,9 @@ public class ReportService implements IReportService {
                     annualSummaryDTO.put("grossProfitStatus",0);
                 }
             
+            }else{
+                annualSummaryDTO.put("grossProfit", 0.0);
+                annualSummaryDTO.put("grossProfitStatus", 0);
             }
             if(annualSummaryV[8]!=null){
                 Double totalWorkCost=Double.parseDouble(annualSummaryV[8].toString());
@@ -698,6 +712,9 @@ public class ReportService implements IReportService {
                 }else{
                     annualSummaryDTO.put("totalWorkCostStatus",0);
                 }
+            }else{
+                annualSummaryDTO.put("totalWorkCost", 0.0);
+                annualSummaryDTO.put("totalWorkCostStatus", 0);
             }
         }
         
@@ -713,6 +730,8 @@ public class ReportService implements IReportService {
             Object [] monthlySummary=this.serviceDBSale.monthlySummary(businessId,date);
             
             if(monthlySummary!=null && monthlySummary[0]!=null){
+                System.out.println("MES "+(i+1)+" -> "+date.toString());
+                System.out.println("monthlySummary[0].toString(): "+monthlySummary[0].toString());
                 monthlySales.add(Double.parseDouble(monthlySummary[0].toString()));
             }else{
                 monthlySales.add(0.0);

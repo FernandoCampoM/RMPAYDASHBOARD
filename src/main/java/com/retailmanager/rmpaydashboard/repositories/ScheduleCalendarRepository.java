@@ -1,5 +1,8 @@
 package com.retailmanager.rmpaydashboard.repositories;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -12,6 +15,8 @@ public interface ScheduleCalendarRepository extends CrudRepository<ScheduleCalen
     
     @Query("SELECT s FROM ScheduleCalendar s WHERE s.employee.userBusinessId = :employeeId")
     public Iterable<ScheduleCalendar> findByEmployeeId(Long employeeId);
+    @Query("SELECT s FROM ScheduleCalendar s WHERE s.employee.userBusinessId = :employeeId AND s.dateStart BETWEEN :startDate AND :endDate")
+    public List<ScheduleCalendar> findByEmployeeIdRange(Long employeeId, LocalDateTime startDate, LocalDateTime endDate);
 
     @Query("SELECT s FROM ScheduleCalendar s WHERE s.employee.business.businessId = :prmBusinessId")
     public Iterable<ScheduleCalendar> findByBusinessId(Long prmBusinessId);

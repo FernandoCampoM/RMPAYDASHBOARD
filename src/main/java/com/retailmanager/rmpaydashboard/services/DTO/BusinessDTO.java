@@ -1,7 +1,10 @@
 package com.retailmanager.rmpaydashboard.services.DTO;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -46,7 +49,10 @@ public class BusinessDTO {
     @Valid
     private AddressDTO address;
     private UserDTO user;
-
+@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createdAt;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updatedAt;
     @NotNull(message = "{business.userId.null}")
     private Long userId;
     private List<CategoryDTO> categories;

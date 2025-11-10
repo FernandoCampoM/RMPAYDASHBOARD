@@ -1,5 +1,7 @@
 package com.retailmanager.rmpaydashboard.services.services.ScheduleCalendar;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -144,6 +146,21 @@ public class ScheduleCalendarService implements IScheduleCalendarService {
     public ResponseEntity<?> getAll(Long employeeId) {
         
         Iterable<ScheduleCalendar> listScheduleCalendar=scheduleDBService.findByEmployeeId(employeeId);
+        List<ScheduleCalendarDTO> listScheduleCalendarDTO = StreamSupport
+    .stream(listScheduleCalendar.spliterator(), false) // Convierte el Iterable en un Stream
+    .map(schedule -> mapper.map(schedule, ScheduleCalendarDTO.class)) // Mapea cada elemento
+    .collect(Collectors.toList()); 
+        for(ScheduleCalendarDTO s:listScheduleCalendarDTO){
+            s.setEmployeeId(employeeId);
+        }
+        return new ResponseEntity<Iterable<ScheduleCalendarDTO>>(listScheduleCalendarDTO, HttpStatus.OK);
+    }
+     @Override
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getAll(Long employeeId, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+        Iterable<ScheduleCalendar> listScheduleCalendar=scheduleDBService.findByEmployeeIdRange(employeeId, startDateTime, endDateTime);
         List<ScheduleCalendarDTO> listScheduleCalendarDTO = StreamSupport
     .stream(listScheduleCalendar.spliterator(), false) // Convierte el Iterable en un Stream
     .map(schedule -> mapper.map(schedule, ScheduleCalendarDTO.class)) // Mapea cada elemento

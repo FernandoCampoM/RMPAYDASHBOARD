@@ -1,5 +1,7 @@
 package com.retailmanager.rmpaydashboard.controller;
 
+import java.time.LocalDate;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -81,9 +83,11 @@ public class ScheduleCalendarController {
      */
     @GetMapping
     public ResponseEntity<?> getAll( @RequestParam(name = "employeeId", required = false) @Positive(message = "employeeId.positive") Long employeeId,
-    @RequestParam(name = "businessId", required = false) @Positive(message = "businessId.positive") Long businessId) {
+    @RequestParam(name = "businessId", required = false) @Positive(message = "businessId.positive") Long businessId,
+    @RequestParam(name = "startDate", required = false) LocalDate startDate,
+    @RequestParam(name = "endDate", required = false) LocalDate endDate) {
         if(businessId != null) return scheduleCalendarService.getAllByBusinessId(businessId);
-        if(employeeId != null) return scheduleCalendarService.getAll(employeeId);
+        if(employeeId != null && startDate != null && endDate != null) return scheduleCalendarService.getAll(employeeId, startDate, endDate);
         return scheduleCalendarService.getAll(employeeId);
     }
 }
