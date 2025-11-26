@@ -709,17 +709,31 @@ public class BusinessService implements IBusinessService {
              objBusiness.setDiscount(prmBusiness.getDiscount());
              objBusiness.setName(prmBusiness.getName());
              objBusiness.setServiceId(serviceId);
-             if(!objBusiness.getLogo().equals(prmBusiness.getLogo())){
+             if(objBusiness.getLogo()!=null && prmBusiness.getLogo()!=null && !objBusiness.getLogo().equals(prmBusiness.getLogo())){
                 if(objBusiness.getLogo()!=null){
                     this.fileService.deleteImage(objBusiness.getLogo());
                 }
                 objBusiness.setLogo(prmBusiness.getLogo());
+             }else{
+                if(objBusiness.getLogo()!=null && prmBusiness.getLogo()==null){
+                    this.fileService.deleteImage(objBusiness.getLogo());
+                    objBusiness.setLogo(null);
+                }else if(objBusiness.getLogo()==null && prmBusiness.getLogo()!=null){
+                    objBusiness.setLogo(prmBusiness.getLogo());
+                }
              }
-             if(!objBusiness.getLogoAth().equals(prmBusiness.getLogoAth())){
+             if(objBusiness.getLogoAth()!=null && prmBusiness.getLogoAth()!=null && !objBusiness.getLogoAth().equals(prmBusiness.getLogoAth())){
                 if(objBusiness.getLogoAth()!=null){
                     this.fileService.deleteImage(objBusiness.getLogoAth());
                 }
                 objBusiness.setLogoAth(prmBusiness.getLogoAth());
+             }else{
+                if(objBusiness.getLogoAth()!=null && prmBusiness.getLogoAth()==null){
+                    this.fileService.deleteImage(objBusiness.getLogoAth());
+                    objBusiness.setLogoAth(null);
+                }else if(objBusiness.getLogoAth()==null && prmBusiness.getLogoAth()!=null){
+                    objBusiness.setLogoAth(prmBusiness.getLogoAth());
+                }
              }
              if(objBusiness!=null){
                 objBusiness=this.serviceDBBusiness.save(objBusiness);
