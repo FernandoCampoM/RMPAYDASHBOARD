@@ -7,12 +7,14 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import com.retailmanager.rmpaydashboard.models.Business;
 import com.retailmanager.rmpaydashboard.models.Terminal;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
+import com.retailmanager.rmpaydashboard.services.DTO.InvoiceDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalsDoPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.doPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
@@ -162,7 +164,33 @@ public class BackgroundRoutinesService {
                             terminalDoPayment.setIdService(terminal.getService().getServiceId());
                             paymentInfo.getTerminalsDoPayment().add(terminalDoPayment);
                         }
-                        invoiceService.doPayment(paymentInfo);
+                        for(int i=0; i<3; i++){
+                            try{
+                                ResponseEntity<?> res = invoiceService.doPayment(paymentInfo);
+                                InvoiceDTO invoice = (InvoiceDTO)res.getBody();
+                                i=3;
+                                break;
+                            }catch(Exception e){
+                                try{
+                                    ResponseEntity<?> res = invoiceService.doPayment(paymentInfo);
+                                    InvoiceDTO invoice = (InvoiceDTO)res.getBody();
+                                    i=3;
+                                    break;
+                                }catch(Exception ex){
+                                    try{
+                                        ResponseEntity<?> res = invoiceService.doPayment(paymentInfo);
+                                        InvoiceDTO invoice = (InvoiceDTO)res.getBody();
+                                        i=3;
+                                        break;
+                                    }catch(Exception exx){
+                                        System.out.println("INTENTO DE PAGO AUTOMATICO FALLIDO PARA EL NEGOCIO: "+business.getBusinessId()+" -- INTENTO: "+(i+1));
+                                        if(i==2){
+                                            System.out.println("FALLO DEFINITIVO DE PAGO AUTOMATICO PARA EL NEGOCIO: "+business.getBusinessId());
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             } catch (Exception e) {

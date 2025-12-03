@@ -351,6 +351,7 @@ public class InvoiceServices implements IInvoiceServices {
                         objTer.setPayment(true);
                         objTer.setService(service);
                         objTer.setAutomaticPayments(prmPaymentInfo.isAutomaticPayments());
+                        objTer.setLastPayment(objBusiness.getLastPayment());
                         objTer = this.serviceDBTerminal.save(objTer);
                         listTerminalIds.add(objTerminal.getTerminalId());
                     }
@@ -399,6 +400,7 @@ public class InvoiceServices implements IInvoiceServices {
                         objTer.setLastPaymentValue(objTerminal.getAmount());
                         objTer.setPayment(true);
                         objTer.setService(service);
+                        objTer.setLastPayment(objBusiness.getLastPayment());
                         objTer.setAutomaticPayments(prmPaymentInfo.isAutomaticPayments());
                         objTer = this.serviceDBTerminal.save(objTer);
                         listTerminalIds.add(objTerminal.getTerminalId());
@@ -949,6 +951,7 @@ public class InvoiceServices implements IInvoiceServices {
             }
 
         } catch (Exception e) {
+            System.out.println("com.retailmanager.rmpaydashboard.services.services.InvoiceServices.InvoiceServices.createToken(): " + e.getMessage());
             HashMap<String, String> map = new HashMap<>();
             map.put("message", e.getMessage());
             return new ResponseEntity<>(map, HttpStatus.BAD_REQUEST);

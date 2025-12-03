@@ -339,8 +339,13 @@ public class ProductService implements IProductService {
             
             throw objException;
         }
+        Long maxPosition=this.serviceDBCategory.maxPositionInCategory(business.getBusinessId());
+        if(maxPosition==null){
+            maxPosition=0L;
+        }
         List<ProductDTO> listProductsRTA=new ArrayList<>();
         for (ProductDTO productDTO : listProductsDTO) {
+            
             Product objProduct=null;
             if (productDTO.getCode() != null) {
                 Optional<Product> optionalProduct = this.serviceDBProducts
@@ -369,8 +374,17 @@ public class ProductService implements IProductService {
                 }else{
                     Category objCategory = new Category();
                     objCategory.setCategoryId(null);
+                    objCategory.setPosition(String.valueOf(maxPosition!=null?maxPosition+1:1L));
                     objCategory.setName(categoryName);
                     objCategory.setBusiness(business);
+                    if(productDTO.getPosition()==null){
+                        maxPosition++;
+                    }else{
+                        objCategory.setPosition(String.valueOf(productDTO.getPosition()));
+                        if(productDTO.getPosition()>maxPosition){
+                            maxPosition=productDTO.getPosition();
+                        }
+                    }
                     objCategory = this.serviceDBCategory.save(objCategory);
                     categoryId=objCategory.getCategoryId();
                     objProduct.setCategory(objCategory);

@@ -39,6 +39,7 @@ public class ProductDTO {
     
     private Long idCategory;
     private String nameCategory;
+    private Long position;
     private Long idBusiness;
     @Size(max = 255, message = "{product.code.max}")
     @NotBlank(message = "{product.code.empty}")
