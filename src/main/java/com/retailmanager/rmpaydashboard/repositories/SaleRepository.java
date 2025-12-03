@@ -1,6 +1,7 @@
 package com.retailmanager.rmpaydashboard.repositories;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.Query;
@@ -145,7 +146,7 @@ public interface SaleRepository extends CrudRepository<Sale, String>  {
      * @return         	
      */
     //
-    public List<Sale> findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween(String saleTransactionType, String saleStatus, Business business, LocalDate startDate,LocalDate endDate);
+    public List<Sale> findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween(String saleTransactionType, String saleStatus, Business business, LocalDateTime startDate, LocalDateTime endDate);
 
     @Query(value = "  SELECT t.paymentType, sum(t.amount) as totalAmount\r\n" + //
                 "  FROM [RMPAY].[dbo].[Sale] S INNER JOIN [RMPAY].[dbo].[Transactions] t ON s.saleID=t.saleId  \r\n" + //
@@ -161,7 +162,7 @@ public interface SaleRepository extends CrudRepository<Sale, String>  {
      * @return             a list of ItemForSale objects associated with the business
      */
     @Query(value = "select i from ItemForSale i where i.sale.business.businessId=:businessId and i.sale.saleEndDate between :startDate and :endDate order by i.quantity desc")
-    public List<ItemForSale> getBestSellingItems(Long businessId, LocalDate startDate, LocalDate endDate);
+    public List<ItemForSale> getBestSellingItems(Long businessId, LocalDateTime startDate, LocalDateTime endDate);
     /**
      * Retrieves the best selling items by category within a specified date range for a given business.
      * 
@@ -172,7 +173,7 @@ public interface SaleRepository extends CrudRepository<Sale, String>  {
      * @return             a list of ItemForSale objects representing the best selling items by category
      */
     @Query(value = "select i from ItemForSale i where i.sale.business.businessId=:businessId and i.sale.saleEndDate between :startDate and :endDate  and i.category=:category order by i.quantity desc")
-    public List<ItemForSale> getBestSellingItemsByCategory(Long businessId, LocalDate startDate, LocalDate endDate, String category);
+    public List<ItemForSale> getBestSellingItemsByCategory(Long businessId, LocalDateTime startDate, LocalDateTime endDate, String category);
     
     @Query(value = "select Category, count(productId) as totalQuantity, sum(s.saleSubtotal) as totalAmount, sum(ifs.cost) as cost, sum(ifs.grossProfit) as grossProfit\r\n" + //
                 "  from [RMPAY].[dbo].[ItemForSale] ifs inner join [RMPAY].[dbo].[Sale] s on ifs.saleID=s.saleID  \r\n" + //
@@ -182,7 +183,7 @@ public interface SaleRepository extends CrudRepository<Sale, String>  {
     public Object[] getBestSellingItemsXCategory(Long businessId, LocalDate startDate, LocalDate endDate);
 
     @Query(value = "select s from Sale s where s.business.businessId=:businessId and s.saleEndDate between :startDate and :endDate and s.saleStatus='SUCCEED'")
-    public List<Sale> getSalesByDateRange(Long businessId, LocalDate startDate, LocalDate endDate);
+    public List<Sale> getSalesByDateRange(Long businessId, LocalDateTime startDate, LocalDateTime endDate);
 
     @Query(value = "SELECT s.userId, ub.username, sum(s.saleTotalAmount) as totalSales, \r\n" + //
                 "sum(s.saleSubtotal) as subTotalSales, sum(s.tipAmount) as tipAmount, \r\n" + //
