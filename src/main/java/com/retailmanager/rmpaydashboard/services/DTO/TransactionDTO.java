@@ -46,6 +46,8 @@ public class TransactionDTO {
  private String saleId;
  @NotNull(message = "{transaction.remoto.notnull}")
  private Integer remoto;
+
+ private SaleDTO infoSale;
     
 public Transactions toTransactions(){
     Transactions transaction = new Transactions();

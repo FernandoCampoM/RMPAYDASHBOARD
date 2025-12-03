@@ -103,7 +103,7 @@ public class ReportService implements IReportService {
         if(dailySummaryV[4]!=null){
             dailySummaryDTO.setEstimatedRedTax(Double.parseDouble(dailySummaryV[4].toString()));
         }
-        List<Sale> sales =this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, date, date);
+        List<Sale> sales =this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, date.atStartOfDay(), date.atStartOfDay());
         Double benefit=0.0;
         Double propinas=0.0;
         if(sales!=null && sales.size()>0){
@@ -183,7 +183,7 @@ public class ReportService implements IReportService {
         if(dailySummaryV[4]!=null){
             dailySummaryDTO.setEstimatedRedTax(Double.parseDouble(dailySummaryV[4].toString()));
         }
-        List<Sale> sales =this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startDate, endDate);
+        List<Sale> sales =this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startDate.atStartOfDay(), endDate.atStartOfDay());
         HashMap<String, Double> payMethosSales= new HashMap<>();
         Double benefit=0.0;
         Double propinas=0.0;
@@ -256,9 +256,9 @@ public class ReportService implements IReportService {
         Business business=serviceDBBusiness.findById(businessId).orElse(null);
         if(business!=null){
             if(categoria.compareTo("TODAS")!=0){
-                productDTOs = this.serviceDBSale.getBestSellingItemsByCategory(businessId, startDate, endDate, categoria);
+                productDTOs = this.serviceDBSale.getBestSellingItemsByCategory(businessId, startDate.atStartOfDay(), endDate.atStartOfDay(), categoria);
             }else{
-                productDTOs = this.serviceDBSale.getBestSellingItems(businessId, startDate, endDate);
+                productDTOs = this.serviceDBSale.getBestSellingItems(businessId, startDate.atStartOfDay(), endDate.atStartOfDay());
             }
         }else{
             throw new  EntidadNoExisteException("El Business con businessId "+businessId+" no existe en la Base de datos");
@@ -348,7 +348,7 @@ public class ReportService implements IReportService {
         if(dailySummaryV[5]!=null){
             dailySummaryDTO.setSubTotalSales(Double.parseDouble(dailySummaryV[5].toString()));
         }
-        List<Sale> sales =this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startDate, endDate);
+        List<Sale> sales =this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startDate.atStartOfDay(), endDate.atStartOfDay());
         
         Double benefit=0.0;
         Double propinas=0.0;
@@ -424,7 +424,7 @@ public class ReportService implements IReportService {
         if(dailySummaryV[5]!=null){
             dailySummaryDTO.setSubTotalSales(Double.parseDouble(dailySummaryV[5].toString()));
         }
-        List<Sale> sales =this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startDate, endDate);
+        List<Sale> sales =this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startDate.atStartOfDay(), endDate.atStartOfDay());
         
         Double benefit=0.0;
         Double propinas=0.0;
@@ -467,7 +467,7 @@ public class ReportService implements IReportService {
         if(!this.serviceDBBusiness.existsById(businessId)){
             throw new EntidadNoExisteException("El Business con businessId "+businessId+" no existe en la Base de datos");
         }
-        List<Sale> sales = this.serviceDBSale.getSalesByDateRange(businessId, startDate, endDate);
+        List<Sale> sales = this.serviceDBSale.getSalesByDateRange(businessId, startDate.atStartOfDay(), endDate.atStartOfDay());
         HashMap<String,String> data=new HashMap<>();
         data.put("totalTax", String.valueOf(0));
             data.put("totalSales", String.valueOf(0));
@@ -516,14 +516,14 @@ public class ReportService implements IReportService {
         if(!this.serviceDBBusiness.existsById(businessId)){
             throw new EntidadNoExisteException("El Business con businessId "+businessId+" no existe en la Base de datos");
         }
-        List<Transactions> transactions = this.serviceDBTransactions.getTransactionsByRange(businessId, startDate, endDate);
+        List<Transactions> transactions = this.serviceDBTransactions.getTransactionsByRange(businessId, startDate.atStartOfDay(), endDate.atStartOfDay());
 
         List<TransactionDTO> transactionsDTOs = new ArrayList<>();
 
         if(transactions!=null && transactions.size()>0){
             for(Transactions transaction:transactions){
                 TransactionDTO transactionDTO = this.mapper.map(transaction, TransactionDTO.class);
-                //transactionDTO.setInfoSale(transaction.getSale().toDTO());
+                transactionDTO.setInfoSale(transaction.getSale().toDTO());
 
                 transactionsDTOs.add(transactionDTO);
             }
