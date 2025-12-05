@@ -18,8 +18,8 @@ public class BackgroundRoutines extends Thread{
         //Obtener fecha y hora actual
          Calendar now = Calendar.getInstance();
          // Establece la hora y el minuto en que deseas que se dispare el evento
-        int hour = 07;   // Hora en formato de 24 horas
-        int minute = 3; // Minutos
+        int hour = 1;   // Hora en formato de 24 horas
+        int minute = 00; // Minutos
         // Calcula la próxima fecha en que se debe disparar el evento
         Calendar nextExecutionTime = Calendar.getInstance();
         nextExecutionTime.set(Calendar.HOUR_OF_DAY, hour);
@@ -50,7 +50,7 @@ public class BackgroundRoutines extends Thread{
 
         // Crea un Timer y programa el TimerTask para que se ejecute todos los días a la misma hora
         Timer timer = new Timer();
-        timer.schedule(task, initialDelay,  60 * 1000); // 24 * 60 * 60 * 1000 =24 horas en milisegundos
+        timer.schedule(task, initialDelay, 24* 60 * 60 * 1000); // 24 * 60 * 60 * 1000 =24 horas en milisegundos
 
         // Espera indefinidamente para que el programa no finalice inmediatamente
         try {
