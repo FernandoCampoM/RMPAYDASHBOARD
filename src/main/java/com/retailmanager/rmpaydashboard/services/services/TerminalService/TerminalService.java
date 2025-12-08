@@ -736,4 +736,19 @@ public class TerminalService implements ITerminalService {
         return "RM"+formattedInt;
     }
 
+    @Override
+    @Transactional
+    public ResponseEntity<?> updateAutomaticPayments(String idTerminal, Boolean status) {
+        if (idTerminal != null) {
+            Optional<Terminal> optional = this.serviceDBTerminal.findById(idTerminal);
+            if (optional.isPresent()) {
+                this.serviceDBTerminal.updateAutomaticPayments(idTerminal, status);
+                return new ResponseEntity<Boolean>(true, HttpStatus.OK);
+            }
+        }
+        EntidadNoExisteException objExeption = new EntidadNoExisteException(
+                "El Terminal con terminalId " + idTerminal + " no existe en la Base de datos");
+        throw objExeption;
+    }
+
 }

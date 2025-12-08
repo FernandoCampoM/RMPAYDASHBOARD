@@ -1,5 +1,7 @@
 package com.retailmanager.rmpaydashboard.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -19,7 +21,6 @@ import com.retailmanager.rmpaydashboard.services.services.TerminalService.ITermi
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 
 @RestController
 @RequestMapping("/api")
@@ -72,6 +73,10 @@ public class TerminalController {
     @PutMapping("/terminals/{terminalId}")
     public ResponseEntity<?> update(@Valid @PathVariable String terminalId,@Valid @RequestBody TerminalDTO prmTerminal){
         return this.terminalService.update(terminalId,prmTerminal);
+    }
+    @PutMapping("/terminals/{idTerminal}/automaticPayments/{status}")
+    public ResponseEntity<?> updateStatus(@Valid @PathVariable String idTerminal, @Valid  @PathVariable Boolean status){
+        return this.terminalService.updateAutomaticPayments(idTerminal,status);
     }
     /**
      * Delete a terminal by ID.
