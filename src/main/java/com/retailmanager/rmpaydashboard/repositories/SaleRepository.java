@@ -130,10 +130,10 @@ public interface SaleRepository extends CrudRepository<Sale, String>  {
      * @param  businessId	identificador del negocio
      * @return         	
      */
-    @Query(value="SELECT productId, sum(it.quantity) as quantity,sum(it.quantity*it.price) as totalAmount, sum(it.grossProfit) as profit, (select top(1) name from [RMPAY].[dbo].[ItemForSale] ift where ift.productId=it.productId) as name,  it.category,  it.category " + //
+    @Query(value="SELECT productId, sum(it.quantity) as quantity,sum(it.quantity*it.price) as totalAmount, sum(it.grossProfit) as profit, (select top(1) name from [RMPAY].[dbo].[ItemForSale] ift where ift.productId=it.productId) as name,  it.price,  it.category " + //
                 "  FROM [RMPAY].[dbo].[ItemForSale] it join [RMPAY].[dbo].[Sale] s on it.saleID=s.saleID  \r\n" + //
                 "  where CAST(s.saleEndDate AS DATE) BETWEEN :startDate AND :endDate and s.businessId=:businessId \r\n" + //
-                "  group by productId,  it.category,  it.category " + //
+                "  group by productId,  it.category,  it.price " + //
                 "  order by sum(it.quantity) desc ", nativeQuery = true)
     public Object[] dailySummaryBestSellingItems(Long businessId,LocalDate startDate,LocalDate endDate);
     

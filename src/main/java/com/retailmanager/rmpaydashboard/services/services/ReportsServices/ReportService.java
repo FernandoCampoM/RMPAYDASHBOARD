@@ -765,8 +765,8 @@ public class ReportService implements IReportService {
                 bestSellingProducts.put("quantity", objectToString(dailySummaryBestSellingItemsV[1]));
                 bestSellingProducts.put("totalAmount", objectToString(dailySummaryBestSellingItemsV[2]));
                 bestSellingProducts.put("benefit", objectToString(dailySummaryBestSellingItemsV[3]));
-                bestSellingProducts.put("category", objectToString(dailySummaryBestSellingItemsV[5]));
-                bestSellingProducts.put("cost", objectToString(dailySummaryBestSellingItemsV[6]));
+                bestSellingProducts.put("category", objectToString(dailySummaryBestSellingItemsV[6]));
+                bestSellingProducts.put("cost", objectToString(dailySummaryBestSellingItemsV[5]));
                 dailySummaryBestSellingProducts.add(bestSellingProducts);
             }
         }
