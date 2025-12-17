@@ -117,7 +117,7 @@ public class ReportService implements IReportService {
         dailySummaryDTO.setBenefit(benefit);
         dailySummaryDTO.setTotalTips(propinas);
         
-        Object [] dailySummaryByCategory=this.serviceDBSale.dailySummaryForCategory(businessId,date);
+        Object [] dailySummaryByCategory=this.serviceDBSale.dailySummaryForCategory(businessId,date.atStartOfDay());
         if(dailySummaryByCategory!=null){
             for(int i=0;i<dailySummaryByCategory.length;i++){
                 Object [] dailySummaryByCategoryV=(Object[]) dailySummaryByCategory[i];
