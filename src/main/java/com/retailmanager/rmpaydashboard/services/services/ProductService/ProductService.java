@@ -622,6 +622,7 @@ public class ProductService implements IProductService {
         objInventoryReceipt.setReceiptId(prmInventoryReceipt.getReceiptId());
         objInventoryReceipt.setComments(prmInventoryReceipt.getComments());
         objInventoryReceipt.setInventoryEntered(gson.toJson(prmInventoryReceipt.getInventoryItems()));
+        objInventoryReceipt.setSupplier(prmInventoryReceipt.getSupplier());
         Business objBusiness = this.serviceDBBusiness.findById(prmInventoryReceipt.getBusinessId()).orElse(null);
         if(objBusiness==null){
             throw new EntidadNoExisteException("El negocio con ID "+prmInventoryReceipt.getBusinessId()+" no existe en la base de datos");

@@ -71,8 +71,8 @@ public interface SaleRepository extends CrudRepository<Sale, String>  {
                 "  (SELECT sum(saleTotalAmount) \r\n" + 
                 "  FROM [RMPAY].[dbo].[Sale] where CAST(saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId ) as totalSales,\r\n" + 
                 "  \r\n" + 
-                "  (SELECT sum(saleTotalAmount) \r\n" + 
-                "  FROM [RMPAY].[dbo].[Sale] where CAST(saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND saleTransactionType IN ('REFUND','PARTIAL_REFUND') AND saleStatus IN ('REFUNDED','PARTIAL_REFUNDED') and businessId=:businessId )as totalRefund,\r\n" + 
+                "  (SELECT sum(s2.saleTotalAmount) \r\n" +
+                "  FROM [RMPAY].[dbo].[Sale] s1 JOIN [RMPAY].[dbo].[Sale] s2 ON s1.saleID = s2.saleToRefund WHERE CAST(s1.saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND s1.businessId = :businessId )as totalRefund,\r\n" +
                 "\r\n" + 
                 "  (SELECT sum(saleStateTaxAmount)\r\n" + 
                 "  FROM [RMPAY].[dbo].[Sale] where CAST(saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId ) as stateTax,\r\n" + 
@@ -132,7 +132,8 @@ public interface SaleRepository extends CrudRepository<Sale, String>  {
      */
     @Query(value="SELECT productId, sum(it.quantity) as quantity,sum(it.quantity*it.price) as totalAmount, sum(it.grossProfit) as profit, (select top(1) name from [RMPAY].[dbo].[ItemForSale] ift where ift.productId=it.productId) as name,  it.price,  it.category " + //
                 "  FROM [RMPAY].[dbo].[ItemForSale] it join [RMPAY].[dbo].[Sale] s on it.saleID=s.saleID  \r\n" + //
-                "  where CAST(s.saleEndDate AS DATE) BETWEEN :startDate AND :endDate and s.businessId=:businessId \r\n" + //
+                "  where CAST(s.saleEndDate AS DATE) BETWEEN :startDate AND :endDate and s.businessId=:businessId \r\n" +
+                "  AND saleTransactionType = 'SALE' AND saleStatus = 'SUCCEED' " + //
                 "  group by productId,  it.category,  it.price " + //
                 "  order by sum(it.quantity) desc ", nativeQuery = true)
     public Object[] dailySummaryBestSellingItems(Long businessId,LocalDate startDate,LocalDate endDate);

@@ -103,7 +103,7 @@ public class ReportService implements IReportService {
         if(dailySummaryV[4]!=null){
             dailySummaryDTO.setEstimatedRedTax(Double.parseDouble(dailySummaryV[4].toString()));
         }
-        List<Sale> sales =this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, date.atStartOfDay(), date.atStartOfDay());
+        List<Sale> sales =this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, date.atStartOfDay(), date.atTime(LocalTime.MAX));
         Double benefit=0.0;
         Double propinas=0.0;
         if(sales!=null && sales.size()>0){
@@ -225,7 +225,21 @@ public class ReportService implements IReportService {
         }
         
         dailySummaryDTO.setSalesByCategory(null);
-        dailySummaryDTO.setBestSellingProducts(null);
+        dailySummaryDTO.setBestSellingProducts(new ArrayList<>());
+
+        Object [] dailySummaryBestSellingItems=this.serviceDBSale.dailySummaryBestSellingItems(businessId, startDate, endDate);
+        if(dailySummaryBestSellingItems!=null){
+            for(int i=0;i<dailySummaryBestSellingItems.length;i++){
+                Object [] dailySummaryBestSellingItemsV=(Object[]) dailySummaryBestSellingItems[i];
+                HashMap<String,String> bestSellingProducts=new HashMap<>();
+                bestSellingProducts.put("name", objectToString(dailySummaryBestSellingItemsV[4]));
+                bestSellingProducts.put("quantity", objectToString(dailySummaryBestSellingItemsV[1]));
+                bestSellingProducts.put("totalAmount", objectToString(dailySummaryBestSellingItemsV[2]));
+                bestSellingProducts.put("benefit", objectToString(dailySummaryBestSellingItemsV[3]));
+                dailySummaryDTO.getBestSellingProducts().add(bestSellingProducts);
+            }
+
+        }
         
         return new ResponseEntity<>(dailySummaryDTO,HttpStatus.OK);
     }
