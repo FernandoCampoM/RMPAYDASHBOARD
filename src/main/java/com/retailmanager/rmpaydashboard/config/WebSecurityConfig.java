@@ -47,6 +47,7 @@ public class WebSecurityConfig {
         return http.csrf(csrf->csrf.disable())
                 .authorizeHttpRequests(authRequest->authRequest
                     .requestMatchers("/login").permitAll()
+                    .requestMatchers(HttpMethod.GET,"/api/test/email").permitAll()
                     .requestMatchers(HttpMethod.GET,"/api/services/**").permitAll()
                     .requestMatchers(HttpMethod.GET,"/api/payment-methods/**").permitAll()
                     .requestMatchers(HttpMethod.GET,"/api/resellers/**").permitAll()

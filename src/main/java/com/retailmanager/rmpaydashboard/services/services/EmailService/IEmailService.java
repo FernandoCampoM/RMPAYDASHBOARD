@@ -20,4 +20,5 @@ public interface IEmailService {
     public void priorNotificationEmail(String email,String userName, String businessName, List<String> services);
     public void lastDayNotificationEmail(String email,String userName, String businessName, List<String> services);
     public void beforeNotificationEmail(String email,String userName, String businessName, List<String> services);
+    public void testEmailService(EmailBodyData emailData);
 }

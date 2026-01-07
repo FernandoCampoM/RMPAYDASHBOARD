@@ -2520,6 +2520,23 @@ msg=msg+"                                             <p>Cordilmente, <br> Equip
 
 
 
+    @Override
+    public void testEmailService(EmailBodyData emailData) {
+       List<String> toList = Arrays.asList(emailData.getEmail());
+        List<String> cc = new ArrayList<String>();
+        cc.add(emailConfigData.getEmailCCO());
+        cc.add(emailConfigData.getEmailTo());
+        String subject = "RECIBO #" + emailData.getInvoiceNumber() + " DE PAGO VIA TOKEN DE PAGO";
+        if(emailData.getInvoiceNumber()!=0){
+            subject = "RECIBO #"+emailData.getInvoiceNumber()+" DE PAGO CON TOKEN DE PAGO";
+        }
+        String htmlBody = createBodyPaymentToken(emailData);
+        sendHtmlEmailWithAttachmentAndCCO(toList, subject, htmlBody, cc, null, null);
+    }
+
+
+
+
     
 
 
