@@ -122,7 +122,18 @@ public interface SaleRepository extends CrudRepository<Sale, String>  {
     @Query(value="  SELECT category, sum(s.saleTotalAmount) as totalSales "+
     " FROM [RMPAY].[dbo].[ItemForSale] it join [RMPAY].[dbo].[Sale] s on it.saleID=s.saleID  where CAST(s.saleEndDate AS date)=:prmDate and s.businessId=:businessId "+
     " group by category order by sum(s.saleTotalAmount) desc", nativeQuery = true)
-    public Object[] dailySummaryForCategory(Long businessId, LocalDateTime prmDate);
+    Object[] dailySummaryForCategory(Long businessId, LocalDateTime prmDate);
+
+    /**
+     * Generate daily summary for a specific category.
+     *
+     * @param  businessId  the ID of the business
+     * @return             an array containing the daily summary for the category
+     */
+    @Query(value="  SELECT category, sum(s.saleTotalAmount) as totalSales "+
+            " FROM [RMPAY].[dbo].[ItemForSale] it join [RMPAY].[dbo].[Sale] s on it.saleID=s.saleID  where CAST(s.saleEndDate AS date) BETWEEN :startDate AND :endDate and s.businessId=:businessId "+
+            " group by category order by sum(s.saleTotalAmount) desc", nativeQuery = true)
+    Object[] summaryForCategory(Long businessId,LocalDate startDate,LocalDate endDate);
 
     /**
      * Obtiene una lista de los productos mas vendidos en orden descendente

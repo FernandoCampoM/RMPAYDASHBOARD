@@ -224,7 +224,20 @@ public class ReportService implements IReportService {
             dailySummaryDTO.getRefundsSummay().add(data);
         }
         
-        dailySummaryDTO.setSalesByCategory(null);
+        dailySummaryDTO.setSalesByCategory(new ArrayList<>());
+        Object [] dailySummaryByCategory=this.serviceDBSale.summaryForCategory(businessId,startDate, endDate);
+        if(dailySummaryByCategory!=null){
+            for(int i=0;i<dailySummaryByCategory.length;i++){
+                Object [] dailySummaryByCategoryV=(Object[]) dailySummaryByCategory[i];
+                HashMap<String,String> salesByCategory=new HashMap<>();
+                salesByCategory.put("category", objectToString(dailySummaryByCategoryV[0]));
+                salesByCategory.put("totalAmount", objectToString(dailySummaryByCategoryV[1]));
+                dailySummaryDTO.getSalesByCategory().add(salesByCategory);
+            }
+
+        }
+
+
         dailySummaryDTO.setBestSellingProducts(new ArrayList<>());
 
         Object [] dailySummaryBestSellingItems=this.serviceDBSale.dailySummaryBestSellingItems(businessId, startDate, endDate);
