@@ -56,7 +56,7 @@ public interface ScheduleCalendarRepository extends CrudRepository<ScheduleCalen
             "    + ' - ' + " +
             "    FORMAT(DATEADD(DAY, 6, Lunes), 'd ''de'' MMMM', 'es-ES') " +
             "    AS DescripcionSemana, " +
-            "    FORMAT(FechaDia, 'dddd \\\\n dd/MM/yyyy', 'es-ES') AS DiaFormateado, " +
+            "    FORMAT(FechaDia, 'dddd | dd/MM/yyyy', 'es-ES') AS DiaFormateado, " +
             "    LOWER( " +
             "        FORMAT( " +
             "            CASE " +

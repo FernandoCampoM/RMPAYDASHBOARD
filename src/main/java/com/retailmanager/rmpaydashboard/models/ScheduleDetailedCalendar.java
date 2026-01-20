@@ -8,7 +8,7 @@ public record ScheduleDetailedCalendar(
         String hour,
         LocalDateTime dateStart,
         LocalDateTime dateEnd,
-        String color,
+        String title,
         Long employee
 ) {
 }
