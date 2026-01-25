@@ -49,6 +49,10 @@ public interface ScheduleCalendarRepository extends CrudRepository<ScheduleCalen
             "            r.FechaDia " +
             "        ) AS Lunes " +
             "    FROM RangosPorDia r " +
+            "), " +
+            "Limites AS (\n" +
+            "    SELECT\n" +
+            "        DATEADD(DAY, -((DATEPART(WEEKDAY, CAST(GETDATE() AS DATE)) + @@DATEFIRST - 2) % 7), CAST(GETDATE() AS DATE)) AS LunesSemanaActual " +
             ") " +
             "SELECT " +
             " id, " +
@@ -80,7 +84,10 @@ public interface ScheduleCalendarRepository extends CrudRepository<ScheduleCalen
             "    title, " +
             "    userBusinessId " +
             "FROM SemanaCalculada " +
+            "CROSS JOIN Limites " +
             "WHERE userBusinessId = :employeeId " +
+            "AND Lunes >= LunesSemanaActual " +
+            "AND Lunes <  DATEADD(DAY, 14, LunesSemanaActual) " +
             "ORDER BY dateStart, FechaDia " +
             "OPTION (MAXRECURSION 1000) ", nativeQuery = true)
     Iterable<Object[]> getDetailedCalendar(Long employeeId);
