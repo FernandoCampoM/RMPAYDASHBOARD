@@ -165,6 +165,7 @@ public class BackgroundRoutinesService {
                             paymentInfo.getTerminalsDoPayment().add(terminalDoPayment);
                         }
                         for(int i=0; i<3; i++){
+                            System.out.println("INTENTO DE PAGO AUTOMATICO PARA EL NEGOCIO: "+business.getBusinessId()+" -- INTENTO: "+(i+1));
                             try{
                                 ResponseEntity<?> res = invoiceService.doPayment(paymentInfo);
                                 InvoiceDTO invoice = (InvoiceDTO)res.getBody();

@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.backgroundRoutines;
 
+import java.time.LocalDateTime;
 import java.util.Calendar;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -36,7 +37,8 @@ public class BackgroundRoutines extends Thread{
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
-                System.out.println("ROUTINES IN BACKGROUND RUNNING");
+                LocalDateTime now = LocalDateTime.now();
+                System.out.println("ROUTINES IN BACKGROUND RUNNING:"+now.toString());
                 // Coloca aquí el código que deseas que se ejecute en el evento diario
                 backgroundRoutinesService.deactivateExpiredTerminals();
 
