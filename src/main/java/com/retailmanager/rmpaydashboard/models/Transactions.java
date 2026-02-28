@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.models;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
@@ -29,7 +30,7 @@ public class Transactions {
 
     private Double changeChash;
 
-    private LocalDateTime date;
+    private Instant date;
  @Column(columnDefinition = "varchar(max)")
     private String entryMode;
  @Column(columnDefinition = "varchar(max)")

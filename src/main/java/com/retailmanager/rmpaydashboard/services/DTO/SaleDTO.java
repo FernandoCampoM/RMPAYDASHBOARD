@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.services.DTO;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -20,11 +21,8 @@ public class SaleDTO {
 
     private String saleID;
 
-   
-     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime saleCreationDate;
-     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime saleEndDate;
+    private Instant saleCreationDate;
+    private Instant saleEndDate;
 
     private String items;
 

@@ -65,4 +65,19 @@ public class SaleReport implements Serializable {
     // No necesitamos @JoinColumn aquí porque la clave foránea está en la tabla 'shifts'.
     @OneToOne(mappedBy = "saleReport")
     private Shift shift; // Referencia a la entidad Shift a la que pertenece este SaleReport
+
+    public SaleReport(SaleReportProjection saleReport, Shift shift){
+        this.saleCash = saleReport.getSaleCash();
+        this.saleCredit = saleReport.getSaleCredit();
+        this.saleDebit = saleReport.getSaleDebit();
+        this.saleATH = saleReport.getSaleATH();
+        this.refundCash = saleReport.getRefundCash();
+        this.refundCredit = saleReport.getRefundCredit();
+        this.refundDebit = saleReport.getRefundDebit();
+        this.refundATH = saleReport.getRefundATH();
+        this.stateTax = saleReport.getStateTax();
+        this.cityTax = saleReport.getCityTax();
+        this.reduceTax = saleReport.getReduceTax();
+        this.shift = shift;
+    }
 }

@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.controller;
 
+import com.retailmanager.rmpaydashboard.services.DTO.CloseShiftDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,8 @@ import com.retailmanager.rmpaydashboard.services.services.ShiftService.IShiftSer
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+
+import java.time.Instant;
 
 @RestController
 @RequestMapping("/api/shifts") // Usar /api/shifts como base para los endpoints de turnos
@@ -53,9 +56,16 @@ public class ShiftController {
      * Posibles errores: 400 Bad Request (validación, shiftId nulo), 404 Not Found (turno no existe).
      */
     @PutMapping("/{shiftId}")
-    public ResponseEntity<?> updateShift( @PathVariable Long shiftId,@Valid @RequestBody ShiftDTO shiftDTO) {
-        shiftDTO.setShiftId(shiftId); // Asegura que el shiftId del DTO coincida con el de la ruta
+    public ResponseEntity<?> updateShift( @PathVariable String shiftId,@Valid @RequestBody ShiftDTO shiftDTO) {
+        //shiftDTO.setShiftId(shiftId); // Asegura que el shiftId del DTO coincida con el de la ruta
         return shiftService.updateShift(shiftDTO);
+    }
+
+    @PutMapping("/close/wb/changeStatus")
+    public ResponseEntity<?> updateStatusShift(
+            @RequestParam String shiftId,
+            @RequestParam String status) {
+        return shiftService.updateStatusShift(shiftId, status);
     }
 
     /**
@@ -67,7 +77,7 @@ public class ShiftController {
      * HTTP 404 Not Found si el turno no existe.
      */
     @DeleteMapping("/{shiftId}")
-    public ResponseEntity<?> deleteShift(@PathVariable Long shiftId) {
+    public ResponseEntity<?> deleteShift(@PathVariable String shiftId) {
         return shiftService.deleteShift(shiftId);
     }
 
@@ -89,6 +99,11 @@ public class ShiftController {
         return shiftService.closeShift(shiftDTO);
     }
 
+    @PutMapping("/close/wb") // O @PostMapping si prefieres que sea idempotente
+    public ResponseEntity<?> closeShift(@Valid @RequestBody CloseShiftDTO closeShiftDTO) {
+        return shiftService.closeShiftWeb(closeShiftDTO);
+    }
+
     /**
      * Endpoint para obtener un turno por su ID.
      *
@@ -98,7 +113,7 @@ public class ShiftController {
      * HTTP 404 Not Found si el turno no existe.
      */
     @GetMapping("/{shiftId}")
-    public ResponseEntity<?> getShiftById(@PathVariable Long shiftId) {
+    public ResponseEntity<?> getShiftById(@PathVariable String shiftId) {
         return shiftService.getShiftById(shiftId);
     }
 
@@ -119,15 +134,25 @@ public class ShiftController {
      * 404 Not Found (empleado/terminal no existe si los IDs son proporcionados).
      */
     @GetMapping
-    public ResponseEntity<?> getAllShifts(
+    public ResponseEntity<?> getAllShiftsPageable(
         @RequestParam @NotNull(message = "Business ID cannot be null") 
         Long businessId, // Obligatorio y validado
             @RequestParam(required = false) Long employeeId,
             @RequestParam(required = false) String serialNumber,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate, 
+            @RequestParam(required = false) Instant startDate,
+            @RequestParam(required = false) Instant endDate,
             @RequestParam(required = false) Boolean statusShiftBalance,
             Pageable pageable) { // Spring Data JPA inyecta automáticamente el Pageable
-        return shiftService.getAllShifts(businessId, employeeId, serialNumber, startDate, endDate, statusShiftBalance, pageable);
+        return shiftService.getAllShiftsPageable(businessId, employeeId, serialNumber, startDate, endDate, statusShiftBalance, pageable);
+    }
+
+    @GetMapping("/close/wb/all")
+    public ResponseEntity<?> getAllShiftsSync(@RequestParam String terminalId) {
+        return shiftService.getAllShiftsSync(terminalId);
+    }
+
+    @PutMapping("/close/wb/update")
+    public ResponseEntity<?> updateShiftSync( @RequestBody CloseShiftDTO closeShiftDTO) {
+        return shiftService.updateShiftSync(closeShiftDTO);
     }
 }

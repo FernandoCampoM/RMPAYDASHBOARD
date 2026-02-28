@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.services.DTO;
 
+import com.retailmanager.rmpaydashboard.models.SaleReportProjection;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -91,6 +92,20 @@ public class SaleReportDTO {
     private BigDecimal reduceTax;
 
     public SaleReportDTO(SaleReport saleReport) {
+        this.saleCash = saleReport.getSaleCash();
+        this.saleCredit = saleReport.getSaleCredit();
+        this.saleDebit = saleReport.getSaleDebit();
+        this.saleATH = saleReport.getSaleATH();
+        this.refundCash = saleReport.getRefundCash();
+        this.refundCredit = saleReport.getRefundCredit();
+        this.refundDebit = saleReport.getRefundDebit();
+        this.refundATH = saleReport.getRefundATH();
+        this.stateTax = saleReport.getStateTax();
+        this.cityTax = saleReport.getCityTax();
+        this.reduceTax = saleReport.getReduceTax();
+    }
+
+    public SaleReportDTO(SaleReportProjection saleReport) {
         this.saleCash = saleReport.getSaleCash();
         this.saleCredit = saleReport.getSaleCredit();
         this.saleDebit = saleReport.getSaleDebit();

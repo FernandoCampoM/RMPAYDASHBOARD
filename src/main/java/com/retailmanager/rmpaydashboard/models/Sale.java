@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,10 +26,10 @@ public class Sale {
     private String saleID;
 
     @Column(name = "saleCreationDate", nullable = false)
-    private LocalDateTime saleCreationDate;
+    private Instant saleCreationDate;
 
     @Column(name = "saleEndDate")
-    private LocalDateTime saleEndDate;
+    private Instant saleEndDate;
 
     @Column(name = "saleItems", nullable = true, columnDefinition = "varchar(MAX)")
     private String items;
