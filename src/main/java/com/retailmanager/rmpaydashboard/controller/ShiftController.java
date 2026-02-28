@@ -152,7 +152,7 @@ public class ShiftController {
     }
 
     @PutMapping("/close/wb/update")
-    public ResponseEntity<?> updateShiftSync( @RequestBody CloseShiftDTO closeShiftDTO) {
-        return shiftService.updateShiftSync(closeShiftDTO);
+    public ResponseEntity<?> updateShiftSync( @RequestBody ShiftDTO shiftDTO) {
+        return shiftService.updateShiftSync(shiftDTO);
     }
 }

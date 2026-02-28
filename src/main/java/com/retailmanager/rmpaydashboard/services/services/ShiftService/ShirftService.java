@@ -15,10 +15,8 @@ import com.retailmanager.rmpaydashboard.repositories.ShiftReporsitory;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
 import com.retailmanager.rmpaydashboard.repositories.UsersAppRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.CloseShiftDTO;
-import com.retailmanager.rmpaydashboard.services.DTO.SaleReportDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ShiftDTO;
 import com.retailmanager.rmpaydashboard.utils.DateFormater;
-import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -32,9 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeParseException;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -193,7 +188,7 @@ public class ShirftService implements IShiftService {
 
     @Override
     public ResponseEntity<?> updateStatusShift(String shiftId, String status) {
-        boolean response = serviceDBShift.updateStatus(shiftId, SyncStatus.valueOf(status), LocalDateTime.now()) > 0;
+        boolean response = serviceDBShift.updateStatus(shiftId, SyncStatus.valueOf(status), Instant.now()) > 0;
         return new ResponseEntity<>(response, HttpStatus.OK);
        /* Shift shift = serviceDBShift.findById(shiftId)
                 .orElseThrow(() -> new EntidadNoExisteException("Shift with ID " + shiftId + " does not exist."));
@@ -598,25 +593,44 @@ public class ShirftService implements IShiftService {
     }
 
     @Override
+    @Transactional
+    public ResponseEntity<?> updateShiftSync(ShiftDTO shiftDTO) {
+        Shift shiftToClose;
+        shiftToClose = serviceDBShift.findById(shiftDTO.shiftId())
+                .orElse(null);
+
+        if (shiftToClose == null) return createShift(shiftDTO);
+
+        var saleReport = serviceDBShift.findSaleReport(shiftToClose.getUserBusiness().getUserBusinessId(), shiftToClose.getShiftId(), shiftDTO.endTime());
+        shiftToClose.setSaleReport(new SaleReport(saleReport, shiftToClose));
+
+        shiftToClose.setBalanceFinal(shiftDTO.balanceFinal());
+
+        //finalSquare = currentCash - (entryCash + saleCash - refundsCash)
+        BigDecimal currentCash = shiftDTO.balanceFinal();
+        BigDecimal entryCash = shiftToClose.getBalanceInicial();
+        BigDecimal saleCash = shiftToClose.getSaleReport().getSaleCash();
+        BigDecimal refundsCash = shiftToClose.getSaleReport().getRefundCash();
+
+        BigDecimal expectedValue = entryCash.add(saleCash).subtract(refundsCash);
+        BigDecimal finalSquare = currentCash.subtract(expectedValue);
+
+        shiftToClose.setCuadreFinal(finalSquare);
+        shiftToClose.setOpenShifBalance(false);
+        shiftToClose.setEndTime(shiftDTO.endTime());
+
+        shiftToClose.setSyncStatus(SyncStatus.SYNCED);
+        shiftToClose.setLastSyncAt(Instant.now());
+        Shift closedShift = serviceDBShift.save(shiftToClose);
+        ShiftDTO shiftDTO1 = shiftFactory.toDTO(closedShift);
+        return new ResponseEntity<>(shiftDTO1, HttpStatus.OK);
+    }
+
+    /*
     public ResponseEntity<?> updateShiftSync(CloseShiftDTO closeShiftDTO) {
         Shift shiftToClose;
         shiftToClose = serviceDBShift.findById(closeShiftDTO.getShiftId())
                 .orElseThrow(() -> new EntidadNoExisteException("Shift with ID " + closeShiftDTO.getShiftId() + " does not exist."));
-
-
-        String userTimeZone = "America/Puerto_Rico";
-        OffsetDateTime dateTimeZone = null;
-
-
-        try {
-            ZoneId userZone = ZoneId.of(userTimeZone);
-
-            dateTimeZone =
-                    closeShiftDTO.getEndTime()
-                            .atZone(userZone)
-                            .toOffsetDateTime();
-        } catch (DateTimeParseException ignored) {
-        }
 
 
         var saleReport = serviceDBShift.findSaleReport(shiftToClose.getUserBusiness().getUserBusinessId(), shiftToClose.getShiftId(),DateFormater.endOfDayUtc(closeShiftDTO.getEndTime()));
@@ -641,7 +655,7 @@ public class ShirftService implements IShiftService {
         shiftToClose.setLastSyncAt(Instant.now());
         Shift closedShift = serviceDBShift.save(shiftToClose);
         return getShiftById(closedShift.getShiftId());
-    }
+    }*/
 
 
     // Métodos para convertir DTO a Entidad y viceversa

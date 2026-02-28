@@ -108,7 +108,7 @@ public interface ShiftReporsitory extends CrudRepository<Shift, String>, PagingA
     @Modifying
     @Transactional
     @Query("UPDATE Shift s SET s.syncStatus = :status, s.lastSyncAt = :now WHERE s.shiftId = :shiftId")
-    int updateStatus(String shiftId, SyncStatus status, LocalDateTime now);
+    int updateStatus(String shiftId, SyncStatus status, Instant now);
 
     @Query("select s from Shift s where s.syncStatus IN ('PENDING', 'ERROR', 'MISSING') and  s.terminal.terminalId = :terminalId")
     List<Shift> findAllShift(String terminalId);

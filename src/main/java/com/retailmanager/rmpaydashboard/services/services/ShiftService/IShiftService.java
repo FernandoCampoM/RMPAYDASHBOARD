@@ -23,7 +23,7 @@ public interface IShiftService {
         Boolean statusShiftBalance,
         Pageable pageable);
     ResponseEntity<?> getAllShiftsSync(String terminalId);
-    ResponseEntity<?> updateShiftSync(CloseShiftDTO closeShiftDTO);
+    ResponseEntity<?> updateShiftSync(ShiftDTO shiftDTO);
     
 
 }
