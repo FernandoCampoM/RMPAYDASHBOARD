@@ -6,7 +6,6 @@ import com.retailmanager.rmpaydashboard.models.Shift;
 import com.retailmanager.rmpaydashboard.models.enums.SyncStatus;
 import com.retailmanager.rmpaydashboard.services.DTO.SaleReportDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ShiftDTO;
-import com.retailmanager.rmpaydashboard.utils.DateFormater;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -84,6 +83,25 @@ public class ShiftFactory {
                         entity.getStateTax(),
                         entity.getCityTax(),
                         entity.getReduceTax()
+                )).orElse(null);
+    }
+
+    public SaleReport toSaleReportEntity(SaleReportDTO saleReport, Shift shift) {
+        return Optional.ofNullable(saleReport)
+                .map(entity -> new SaleReport(
+                        shift.getSaleReport()!=null ? shift.getSaleReport().getId() : null,
+                        entity.getSaleCash(),
+                        entity.getSaleCredit(),
+                        entity.getSaleDebit(),
+                        entity.getSaleATH(),
+                        entity.getRefundCash(),
+                        entity.getRefundCredit(),
+                        entity.getRefundDebit(),
+                        entity.getRefundATH(),
+                        entity.getStateTax(),
+                        entity.getCityTax(),
+                        entity.getReduceTax(),
+                        shift
                 )).orElse(null);
     }
 }

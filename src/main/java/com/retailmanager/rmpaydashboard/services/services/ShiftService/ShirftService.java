@@ -29,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -601,8 +600,12 @@ public class ShirftService implements IShiftService {
 
         if (shiftToClose == null) return createShift(shiftDTO);
 
-        var saleReport = serviceDBShift.findSaleReport(shiftToClose.getUserBusiness().getUserBusinessId(), shiftToClose.getShiftId(), shiftDTO.endTime());
-        shiftToClose.setSaleReport(new SaleReport(saleReport, shiftToClose));
+        if (shiftDTO.saleReport() == null) {
+            var saleReport = serviceDBShift.findSaleReport(shiftToClose.getUserBusiness().getUserBusinessId(), shiftToClose.getShiftId(), shiftDTO.endTime());
+            shiftToClose.setSaleReport(new SaleReport(saleReport, shiftToClose));
+        } else {
+            shiftToClose.setSaleReport(shiftFactory.toSaleReportEntity(shiftDTO.saleReport(), shiftToClose));
+        }
 
         shiftToClose.setBalanceFinal(shiftDTO.balanceFinal());
 
