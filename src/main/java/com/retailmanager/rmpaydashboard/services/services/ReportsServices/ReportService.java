@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -71,9 +72,9 @@ public class ReportService implements IReportService {
      */
     @Override
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getDailySummary(Long businessId, LocalDate date) {
+    public ResponseEntity<?> getDailySummary(Long businessId, Instant startUtc, Instant endUtc) {
         DailySummaryDTO dailySummaryDTO = new DailySummaryDTO();
-        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, date, date);
+        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
         Object[] dailySummaryV = null;
         if (dailySummary != null && dailySummary[0] != null) {
             dailySummaryV = (Object[]) dailySummary[0];
@@ -101,7 +102,7 @@ public class ReportService implements IReportService {
         if (dailySummaryV[4] != null) {
             dailySummaryDTO.setEstimatedRedTax(Double.parseDouble(dailySummaryV[4].toString()));
         }
-        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, date.atStartOfDay(), date.atTime(LocalTime.MAX));
+        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startUtc, endUtc);
         Double benefit = 0.0;
         Double propinas = 0.0;
         if (sales != null && sales.size() > 0) {
@@ -115,7 +116,7 @@ public class ReportService implements IReportService {
         dailySummaryDTO.setBenefit(benefit);
         dailySummaryDTO.setTotalTips(propinas);
 
-        Object[] dailySummaryByCategory = this.serviceDBSale.dailySummaryForCategory(businessId, date.atStartOfDay());
+        Object[] dailySummaryByCategory = this.serviceDBSale.dailySummaryForCategory(businessId, startUtc, endUtc);
         if (dailySummaryByCategory != null) {
             for (int i = 0; i < dailySummaryByCategory.length; i++) {
                 Object[] dailySummaryByCategoryV = (Object[]) dailySummaryByCategory[i];
@@ -126,7 +127,7 @@ public class ReportService implements IReportService {
             }
 
         }
-        Object[] dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, date, date);
+        Object[] dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startUtc, endUtc);
         if (dailySummaryBestSellingItems != null) {
             for (int i = 0; i < dailySummaryBestSellingItems.length; i++) {
                 Object[] dailySummaryBestSellingItemsV = (Object[]) dailySummaryBestSellingItems[i];
@@ -151,10 +152,10 @@ public class ReportService implements IReportService {
      * @return ResponseEntity containing the daily summary DTO
      */
     @Override
-    public ResponseEntity<?> getSummaryByDateRangee(Long businessId, LocalDate startDate, LocalDate endDate) {
+    public ResponseEntity<?> getSummaryByDateRangee(Long businessId, Instant startUtc, Instant endUtc) {
         DailySummaryDTO dailySummaryDTO = new DailySummaryDTO();
 
-        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startDate, endDate);
+        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
         Object[] dailySummaryV = null;
         if (dailySummary != null && dailySummary[0] != null) {
             dailySummaryV = (Object[]) dailySummary[0];
@@ -181,7 +182,7 @@ public class ReportService implements IReportService {
         if (dailySummaryV[4] != null) {
             dailySummaryDTO.setEstimatedRedTax(Double.parseDouble(dailySummaryV[4].toString()));
         }
-        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startDate.atStartOfDay(), endDate.atStartOfDay());
+        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startUtc, endUtc);
         HashMap<String, Double> payMethosSales = new HashMap<>();
         Double benefit = 0.0;
         Double propinas = 0.0;
@@ -208,7 +209,7 @@ public class ReportService implements IReportService {
             payMethosSalesV.put("totalAmount", entry.getValue().toString());
             dailySummaryDTO.getBestSellingPayMethods().add(payMethosSalesV);
         }
-        Object[] refundSummary = this.serviceDBSale.refundSumaryByRange(businessId, startDate, endDate);
+        Object[] refundSummary = this.serviceDBSale.refundSumaryByRange(businessId, startUtc, endUtc);
 
         for (int i = 0; i < refundSummary.length; i++) {
             HashMap<String, String> data = new HashMap<>();
@@ -223,7 +224,7 @@ public class ReportService implements IReportService {
         }
 
         dailySummaryDTO.setSalesByCategory(new ArrayList<>());
-        Object[] dailySummaryByCategory = this.serviceDBSale.summaryForCategory(businessId, startDate, endDate);
+        Object[] dailySummaryByCategory = this.serviceDBSale.summaryForCategory(businessId, startUtc, endUtc);
         if (dailySummaryByCategory != null) {
             for (int i = 0; i < dailySummaryByCategory.length; i++) {
                 Object[] dailySummaryByCategoryV = (Object[]) dailySummaryByCategory[i];
@@ -238,7 +239,7 @@ public class ReportService implements IReportService {
 
         dailySummaryDTO.setBestSellingProducts(new ArrayList<>());
 
-        Object[] dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startDate, endDate);
+        Object[] dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startUtc, endUtc);
         if (dailySummaryBestSellingItems != null) {
             for (int i = 0; i < dailySummaryBestSellingItems.length; i++) {
                 Object[] dailySummaryBestSellingItemsV = (Object[]) dailySummaryBestSellingItems[i];
@@ -275,15 +276,15 @@ public class ReportService implements IReportService {
     }
 
     @Override
-    public ResponseEntity<?> getBestSellingItems(Long businessId, LocalDate startDate, LocalDate endDate,
+    public ResponseEntity<?> getBestSellingItems(Long businessId, Instant startUtc, Instant endUtc,
                                                  String categoria) {
         List<ItemForSale> productDTOs = new ArrayList<>();
         Business business = serviceDBBusiness.findById(businessId).orElse(null);
         if (business != null) {
             if (categoria.compareTo("TODAS") != 0) {
-                productDTOs = this.serviceDBSale.getBestSellingItemsByCategory(businessId, startDate.atStartOfDay(), endDate.atStartOfDay(), categoria);
+                productDTOs = this.serviceDBSale.getBestSellingItemsByCategory(businessId, startUtc, endUtc, categoria);
             } else {
-                productDTOs = this.serviceDBSale.getBestSellingItems(businessId, startDate.atStartOfDay(), endDate.atStartOfDay());
+                productDTOs = this.serviceDBSale.getBestSellingItems(businessId, startUtc, endUtc);
             }
         } else {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
@@ -303,12 +304,12 @@ public class ReportService implements IReportService {
      * @return a ResponseEntity containing a list of sales grouped by category
      */
     @Override
-    public ResponseEntity<?> getSalesByCategory(Long businessId, LocalDate startDate, LocalDate endDate) {
+    public ResponseEntity<?> getSalesByCategory(Long businessId, Instant startUtc, Instant endUtc) {
         if (!this.serviceDBBusiness.existsById(businessId)) {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
         List<HashMap<String, String>> salesByCategoryDTOs = new ArrayList<>();
-        Object[] salesByCategory = this.serviceDBSale.getBestSellingItemsXCategory(businessId, startDate, endDate);
+        Object[] salesByCategory = this.serviceDBSale.getBestSellingItemsXCategory(businessId, startUtc, endUtc);
         for (int i = 0; i < salesByCategory.length; i++) {
             HashMap<String, String> data = new HashMap<>();
             Object[] salesByCategoryV = (Object[]) salesByCategory[i];
@@ -342,10 +343,10 @@ public class ReportService implements IReportService {
      * @return a ResponseEntity containing the earnings report DTO and the HTTP status
      */
     @Override
-    public ResponseEntity<?> getEarningsReport(Long businessId, LocalDate startDate, LocalDate endDate) {
+    public ResponseEntity<?> getEarningsReport(Long businessId, Instant startUtc, Instant endUtc) {
         EarningsReportDTO dailySummaryDTO = new EarningsReportDTO();
 
-        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startDate, endDate);
+        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
         Object[] dailySummaryV = null;
         if (dailySummary != null && dailySummary[0] != null) {
             dailySummaryV = (Object[]) dailySummary[0];
@@ -373,7 +374,7 @@ public class ReportService implements IReportService {
         if (dailySummaryV[5] != null) {
             dailySummaryDTO.setSubTotalSales(Double.parseDouble(dailySummaryV[5].toString()));
         }
-        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startDate.atStartOfDay(), endDate.atStartOfDay());
+        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startUtc, endUtc);
 
         Double benefit = 0.0;
         Double propinas = 0.0;
@@ -387,7 +388,7 @@ public class ReportService implements IReportService {
         }
         dailySummaryDTO.setBenefit(benefit);
         List<HashMap<String, String>> earningsByCategoryDTOs = new ArrayList<>();
-        Object[] salesByCategory = this.serviceDBSale.getBestSellingItemsXCategory(businessId, startDate, endDate);
+        Object[] salesByCategory = this.serviceDBSale.getBestSellingItemsXCategory(businessId, startUtc, endUtc);
         for (int i = 0; i < salesByCategory.length; i++) {
             HashMap<String, String> data = new HashMap<>();
             Object[] salesByCategoryV = (Object[]) salesByCategory[i];
@@ -402,7 +403,7 @@ public class ReportService implements IReportService {
         }
         dailySummaryDTO.setEarningsByCategory(earningsByCategoryDTOs);
 
-        Object[] dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startDate, endDate);
+        Object[] dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startUtc, endUtc);
         if (dailySummaryBestSellingItems != null) {
             for (int i = 0; i < dailySummaryBestSellingItems.length; i++) {
                 Object[] dailySummaryBestSellingItemsV = (Object[]) dailySummaryBestSellingItems[i];
