@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.repositories;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.Modifying;
@@ -53,11 +54,11 @@ public interface TerminalRepository extends CrudRepository<Terminal, String> {
      int updateAutomaticPayments(String terminalId, Boolean status);
 
     @Query("Select t from Terminal t where t.business.priorNotification IS NULL  and t.expirationDate=:targetDate")
-     List<Terminal> getBusinessForPriorNotification(LocalDate targetDate);
+     List<Terminal> getBusinessForPriorNotification(Instant targetDate);
      @Query("Select t from Terminal t where t.business.lastDayNotification IS NULL  and t.expirationDate=:targetDate")
-     List<Terminal> getBusinessForLastDayNotification(LocalDate targetDate);
+     List<Terminal> getBusinessForLastDayNotification(Instant targetDate);
      @Query("Select t from Terminal t where t.business.afterNotification IS NULL and t.expirationDate=:targetDate")
-     List<Terminal> getBusinessForAfterNotification(LocalDate targetDate);
+     List<Terminal> getBusinessForAfterNotification(Instant targetDate);
     
      @Query("Select t from Terminal t where t.automaticPayments=True  and t.expirationDate<=:targetDate and t.business.businessId = :businessId")
      List<Terminal> findTerminalsForPayment(LocalDate targetDate, Long businessId);

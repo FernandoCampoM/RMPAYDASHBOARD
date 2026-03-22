@@ -2,6 +2,7 @@ package com.retailmanager.rmpaydashboard.security;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
 
@@ -69,7 +70,7 @@ public class JWTAthenticationFilter extends UsernamePasswordAuthenticationFilter
         if(userDetails.getUserObject().isEnable()==false){
             throw new UserDisabled("El USUARIO NO ESTA ACTIVO");
         }
-        usuarioRepository.updateLastLogin(userDetails.getUserObject().getUserID(),LocalDate.now());
+        usuarioRepository.updateLastLogin(userDetails.getUserObject().getUserID(), Instant.now());
         String token=TokenUtils.createTokenWithClaims(userDetails.getUserObject(), terminalRepository);
         usuarioRepository.updateTempAuthId(userDetails.getUserObject().getUsername(), null);
         

@@ -429,10 +429,10 @@ public class ReportService implements IReportService {
      * @return ResponseEntity containing the tips report
      */
     @Override
-    public ResponseEntity<?> getTips(Long businessId, LocalDate startDate, LocalDate endDate) {
+    public ResponseEntity<?> getTips(Long businessId, Instant startUtc, Instant endUtc) {
         TipsReportDTO dailySummaryDTO = new TipsReportDTO();
 
-        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startDate, endDate);
+        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
         Object[] dailySummaryV = null;
         if (dailySummary != null && dailySummary[0] != null) {
             dailySummaryV = (Object[]) dailySummary[0];
@@ -450,7 +450,7 @@ public class ReportService implements IReportService {
         if (dailySummaryV[5] != null) {
             dailySummaryDTO.setSubTotalSales(Double.parseDouble(dailySummaryV[5].toString()));
         }
-        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startDate.atStartOfDay(), endDate.atStartOfDay());
+        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startUtc, endUtc);
 
         Double benefit = 0.0;
         Double propinas = 0.0;
@@ -464,7 +464,7 @@ public class ReportService implements IReportService {
         }
         dailySummaryDTO.setTotalTips(propinas);
         dailySummaryDTO.setUserTips(new ArrayList<>());
-        Object[] tipsByUsers = this.serviceDBSale.getUserTipsReport(businessId, startDate, endDate);
+        Object[] tipsByUsers = this.serviceDBSale.getUserTipsReport(businessId, startUtc, endUtc);
         if (tipsByUsers != null) {
             for (int i = 0; i < tipsByUsers.length; i++) {
                 Object[] dailySummaryBestSellingItemsV = (Object[]) tipsByUsers[i];
@@ -489,11 +489,11 @@ public class ReportService implements IReportService {
      * @return a ResponseEntity containing the taxes data
      */
     @Override
-    public ResponseEntity<?> getTaxes(Long businessId, LocalDate startDate, LocalDate endDate) {
+    public ResponseEntity<?> getTaxes(Long businessId, Instant startUtc, Instant endUtc) {
         if (!this.serviceDBBusiness.existsById(businessId)) {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
-        List<Sale> sales = this.serviceDBSale.getSalesByDateRange(businessId, startDate.atStartOfDay(), endDate.atStartOfDay());
+        List<Sale> sales = this.serviceDBSale.getSalesByDateRange(businessId, startUtc, endUtc);
         HashMap<String, String> data = new HashMap<>();
         data.put("totalTax", String.valueOf(0));
         data.put("totalSales", String.valueOf(0));
@@ -539,11 +539,11 @@ public class ReportService implements IReportService {
      * @throws EntidadNoExisteException if the business with the given ID does not exist in the database
      */
     @Override
-    public ResponseEntity<?> getReceipts(Long businessId, LocalDate startDate, LocalDate endDate) {
+    public ResponseEntity<?> getReceipts(Long businessId, Instant startUtc, Instant endUtc) {
         if (!this.serviceDBBusiness.existsById(businessId)) {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
-        List<Transactions> transactions = this.serviceDBTransactions.getTransactionsByRange(businessId, startDate.atStartOfDay(), endDate.atStartOfDay());
+        List<Transactions> transactions = this.serviceDBTransactions.getTransactionsByRange(businessId, startUtc, endUtc);
 
         List<TransactionDTO> transactionsDTOs = new ArrayList<>();
 

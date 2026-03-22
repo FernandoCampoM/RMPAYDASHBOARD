@@ -1,4 +1,5 @@
 package com.retailmanager.rmpaydashboard.repositories;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -34,7 +35,7 @@ public interface UserRepository extends  CrudRepository<User,Long>{
     @Transactional
     @Modifying
     @Query("UPDATE User u SET u.lastLogin = :localDate WHERE u.userID = :userID")
-    void updateLastLogin(Long userID, LocalDate localDate);
+    void updateLastLogin(Long userID, Instant localDate);
     @Transactional
     @Modifying
     @Query("UPDATE User u SET u.tempAuthId = :tempAuthId WHERE u.username = :username")

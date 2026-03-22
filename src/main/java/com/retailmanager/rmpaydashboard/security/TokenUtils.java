@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.security;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -143,7 +144,7 @@ public class TokenUtils {
                 User usuario= usuarioRepository.findOneByUsername(username).orElseThrow(()-> new UsernameNotFoundException("El usuario con user "+username+" no existe"));
                 UserDetailsImpl objUser=new UserDetailsImpl(usuario);
                 if(terminalIdLong!=null){usuario.setTempAuthId(terminalIdLong);}
-                usuarioRepository.updateLastLogin(usuario.getUserID(),LocalDate.now());
+                usuarioRepository.updateLastLogin(usuario.getUserID(), Instant.now());
                 return new UsernamePasswordAuthenticationToken(username,null,objUser.getAuthorities());
             }
         } catch (JwtException  e) {

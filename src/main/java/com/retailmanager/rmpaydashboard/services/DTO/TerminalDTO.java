@@ -1,23 +1,22 @@
 package com.retailmanager.rmpaydashboard.services.DTO;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-
-import java.time.LocalDate;
-
-import com.fasterxml.jackson.annotation.JsonFormat;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Getter @Setter
+import java.time.Instant;
+
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class TerminalDTO {
     private String terminalId;
-    
+
     private String serial;
     @NotBlank(message = "{terminal.name.empty}")
     @Size(max = 255, message = "{terminal.name.max}")
@@ -26,8 +25,8 @@ public class TerminalDTO {
     private Boolean enable;
     private Long idService;
     private Long businesId;
-    private LocalDate expirationDate;
-    private LocalDate lastTransmision;
+    private Instant expirationDate;
+    private Instant lastTransmision;
 
     //INDICA SI EL TERMINAL TIENE HABILITADOS LOS PAGOS AUTOMATICOS
     private boolean automaticPayments;
@@ -35,6 +34,6 @@ public class TerminalDTO {
     private boolean isPayment;
     //INDICA SI EL TERMINAL ES EL QUE SE REALIZA EL COBRO PRINCIPAL DEL SERVICIO
     private boolean isPrincipal;
-    private LocalDate registerDate;
-    private LocalDate lastPayment;
+    private Instant registerDate;
+    private Instant lastPayment;
 }

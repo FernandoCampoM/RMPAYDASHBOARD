@@ -86,22 +86,22 @@ public class ReportsController {
 
     @GetMapping("/reports/tips")
     public ResponseEntity<?> getTips(@RequestParam(name = "businessId") Long businessId,
-                                      @RequestParam(name = "startDate") @Valid LocalDate startDate,
-                                      @RequestParam(name = "endDate") @Valid LocalDate endDate) {
-        return reportService.getTips(businessId, startDate, endDate);
+                                     @RequestParam(name = "startUtc") Instant startUtc,
+                                     @RequestParam(name = "endUtc") Instant endUtc) {
+        return reportService.getTips(businessId, startUtc, endUtc);
     }
 
     @GetMapping("/reports/taxes")
     public ResponseEntity<?> getTaxes(@RequestParam(name = "businessId") Long businessId,
-                                       @RequestParam(name = "startDate") @Valid LocalDate startDate,
-                                       @RequestParam(name = "endDate") @Valid LocalDate endDate) {
-        return reportService.getTaxes(businessId, startDate, endDate);
+                                      @RequestParam(name = "startUtc") Instant startUtc,
+                                      @RequestParam(name = "endUtc") Instant endUtc) {
+        return reportService.getTaxes(businessId, startUtc, endUtc);
     }
     @GetMapping("/reports/receipts")
     public ResponseEntity<?> getReceipts(@RequestParam(name = "businessId") Long businessId,
-                                       @RequestParam(name = "startDate") @Valid LocalDate startDate,
-                                       @RequestParam(name = "endDate") @Valid LocalDate endDate) {
-        return reportService.getReceipts(businessId, startDate, endDate);
+                                         @RequestParam(name = "startUtc") Instant startUtc,
+                                         @RequestParam(name = "endUtc") Instant endUtc) {
+        return reportService.getReceipts(businessId, startUtc, endUtc);
     }
     @GetMapping("/reports/home")
     public ResponseEntity<?> getHomeReport(@RequestParam(name = "businessId") Long businessId,

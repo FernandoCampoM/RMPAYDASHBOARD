@@ -268,6 +268,9 @@ public interface SaleRepository extends CrudRepository<Sale, String> {
     @Query(value = "select s from Sale s where s.business.businessId=:businessId and s.saleEndDate between :startDate and :endDate and s.saleStatus='SUCCEED'")
     public List<Sale> getSalesByDateRange(Long businessId, LocalDateTime startDate, LocalDateTime endDate);
 
+    @Query(value = "select s from Sale s where s.business.businessId=:businessId and s.saleEndDate >= :startDate and s.saleEndDate < :endDate and s.saleStatus='SUCCEED'")
+    public List<Sale> getSalesByDateRange(Long businessId, Instant startDate, Instant endDate);
+
     @Query(value = "SELECT s.userId, ub.username, sum(s.saleTotalAmount) as totalSales, \r\n" + //
             "sum(s.saleSubtotal) as subTotalSales, sum(s.tipAmount) as tipAmount, \r\n" + //
             "(SELECT sum(grossProfit)\r\n" + //
@@ -276,6 +279,15 @@ public interface SaleRepository extends CrudRepository<Sale, String> {
             "  where s.saleEndDate between :startDate and :endDate and s.businessId= :businessId " + //
             "  group by s.userId, ub.username", nativeQuery = true)
     public Object[] getUserTipsReport(Long businessId, LocalDate startDate, LocalDate endDate);
+
+    @Query(value = "SELECT s.userId, ub.username, sum(s.saleTotalAmount) as totalSales, \r\n" + //
+            "sum(s.saleSubtotal) as subTotalSales, sum(s.tipAmount) as tipAmount, \r\n" + //
+            "(SELECT sum(grossProfit)\r\n" + //
+            "  FROM [RMPAY].[dbo].[ItemForSale]  as ifs where ifs.saleID in (select ss.saleID from [RMPAY].[dbo].[Sale] as ss where ss.userId=s.userId )) as totalProfits\r\n" + //
+            "  FROM [RMPAY].[dbo].[Sale] as s left outer join [RMPAY].[dbo].[UsersBusiness] ub on s.userId=ub.userBusinessId \r\n" + //
+            "  where s.saleEndDate >= :startDate and s.saleEndDate < :endDate and s.businessId= :businessId " + //
+            "  group by s.userId, ub.username", nativeQuery = true)
+    Object[] getUserTipsReport(Long businessId, Instant startDate, Instant endDate);
 
 }
 

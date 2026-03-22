@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.models;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -50,7 +51,7 @@ public class Business {
     @Column(nullable = false)
     private double discount=0.0;
     @Column(nullable = true)
-    private LocalDate lastPayment;
+    private Instant lastPayment;
     @Column(nullable = true)
     private String comment;
 
@@ -58,22 +59,22 @@ public class Business {
     private Long logoAth;
     
     @Column(nullable = true)
-    private LocalDate priorNotification;
+    private Instant priorNotification;
     @Column(nullable = true)
-    private LocalDate lastDayNotification;
+    private Instant lastDayNotification;
     @Column(nullable = true)
-    private LocalDate afterNotification;
+    private Instant afterNotification;
     @Column(nullable = true)
-    private LocalDate registerDate;
+    private Instant registerDate;
     @Column(nullable = true)
     public Float percentageProfit;
 
     @CreatedDate
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @LastModifiedDate
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
     /**Objeto que encapsula la información de la dirección */
     @OneToOne(cascade=CascadeType.ALL,optional = true)
     @JoinColumn( name="addressId",nullable = true)
@@ -102,12 +103,12 @@ public class Business {
     private void prePersist() {
         
         if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
+            this.createdAt = Instant.now();
         }
     }
 
     @PreUpdate
     private void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 }

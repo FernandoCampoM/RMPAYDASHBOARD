@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.repositories;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,6 +17,12 @@ public interface  TransactionsRepository extends CrudRepository<Transactions, St
             "and t.sale.saleEndDate between :startDate and :endDate " +
             "order by t.sale.saleEndDate desc")
     public List<Transactions> getTransactionsByRange(@Param("businessId") Long businessId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query( "select t from Transactions t " +
+            "where t.sale.business.businessId=:businessId " +
+            "and t.sale.saleEndDate >= :startDate and t.sale.saleEndDate < :endDate " +
+            "order by t.sale.saleEndDate desc")
+    List<Transactions> getTransactionsByRange(@Param("businessId") Long businessId, @Param("startDate") Instant startDate, @Param("endDate") Instant endDate);
 
     @Query( "select t from Transactions t where t.sale.business.merchantId=:merchantId and t.date between :startDate and :endDate")
     public List<Transactions> getTransactionsByMerchantIdAndDateBetween(String merchantId, LocalDateTime startDate, LocalDateTime endDate);

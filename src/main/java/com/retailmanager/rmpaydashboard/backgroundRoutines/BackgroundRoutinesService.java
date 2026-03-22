@@ -1,5 +1,7 @@
 package com.retailmanager.rmpaydashboard.backgroundRoutines;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,8 +45,8 @@ public class BackgroundRoutinesService {
     @Transactional
     public void priorNotificaionEmail(){
          HashMap<Long, Object> users = new HashMap<Long, Object>();
-         LocalDate date = LocalDate.now();
-         date=date.minusDays(10);
+         Instant date = Instant.now();
+         date=date.minus(Duration.ofDays(10));
          List<Terminal> terminals = terminalRepository.getBusinessForPriorNotification(date);
          for (Terminal terminal : terminals) {
             if(users.containsKey(terminal.getBusiness().getUser().getUserID())){
@@ -76,8 +78,8 @@ public class BackgroundRoutinesService {
     @Transactional
     public void lastDayNotificaionEmail(){
         HashMap<Long, Object> users = new HashMap<Long, Object>();
-         LocalDate date = LocalDate.now();
-         date=date.minusDays(5);
+         Instant date = Instant.now();
+         date=date.minus(Duration.ofDays(5));
          List<Terminal> terminals = terminalRepository.getBusinessForLastDayNotification(date);
          for (Terminal terminal : terminals) {
             if(users.containsKey(terminal.getBusiness().getUser().getUserID())){
@@ -109,7 +111,7 @@ public class BackgroundRoutinesService {
    @Transactional
    public void afterNotificaionEmail(){
     HashMap<Long, Object> users = new HashMap<Long, Object>();
-         LocalDate date = LocalDate.now();
+         Instant date = Instant.now();
          List<Terminal> terminals = terminalRepository.getBusinessForAfterNotification(date);
          for (Terminal terminal : terminals) {
             if(users.containsKey(terminal.getBusiness().getUser().getUserID())){

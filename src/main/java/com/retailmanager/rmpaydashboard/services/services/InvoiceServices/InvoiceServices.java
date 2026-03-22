@@ -1,24 +1,5 @@
 package com.retailmanager.rmpaydashboard.services.services.InvoiceServices;
 
-import java.text.DecimalFormat;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.modelmapper.ModelMapper;
-import org.modelmapper.TypeToken;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-
-import org.springframework.transaction.annotation.Transactional;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.ConsumeAPIException;
@@ -39,12 +20,10 @@ import com.retailmanager.rmpaydashboard.services.DTO.ConfirmPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.InvoiceDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.PaymentDataDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.PaymentHistoryReport;
-import com.retailmanager.rmpaydashboard.services.DTO.ServiceDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalsDoPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.doPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.EmailBodyData;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
-import com.retailmanager.rmpaydashboard.services.services.Payment.ATHMovil;
 import com.retailmanager.rmpaydashboard.services.services.Payment.IATHMovilService;
 import com.retailmanager.rmpaydashboard.services.services.Payment.IBlackStoneService;
 import com.retailmanager.rmpaydashboard.services.services.Payment.data.ATHMCancelPaymentResponse;
@@ -56,7 +35,25 @@ import com.retailmanager.rmpaydashboard.services.services.Payment.data.ItemATHM;
 import com.retailmanager.rmpaydashboard.services.services.Payment.data.ResponseJSON;
 import com.retailmanager.rmpaydashboard.services.services.Payment.data.ResponsePayment;
 import com.retailmanager.rmpaydashboard.utils.ConverterJson;
-import com.sendgrid.helpers.mail.objects.Email;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeToken;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.text.DecimalFormat;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @org.springframework.stereotype.Service
 public class InvoiceServices implements IInvoiceServices {
@@ -173,9 +170,9 @@ public class InvoiceServices implements IInvoiceServices {
                 Double amount = 0.0;
                 Service objService = listService.get(objTerminal.getIdService());
                 String descripcion = "";
-                
+
                 ItemATHM item = new ItemATHM(); // se usa para informarle al cliente los items que se estan pagando en ATH Movil
-                
+
                 if (objTerminalDB.isPrincipal()) {
                     descripcion = "Terminal Principal ID [" + objTerminal.getTerminalId() + "] - "
                             + objService.getServiceName() + ": $"
@@ -210,12 +207,12 @@ public class InvoiceServices implements IInvoiceServices {
                                 + String.valueOf(formato.format(objService.getTerminals6to9())) + "\n";
                         amount = objService.getTerminals6to9();
                         //INFORMACIÓN PARA ATH MOVIL
-                            item.setDescription(descripcion);
-                            item.setName(objService.getServiceName());
-                            item.setPrice(String.valueOf(formato.format(objService.getTerminals6to9())));
-                            item.setTax(String.valueOf(objService.getTerminals6to9() * stateTaxRate));
-                            item.setQuantity("1");
-                            items.add(item);
+                        item.setDescription(descripcion);
+                        item.setName(objService.getServiceName());
+                        item.setPrice(String.valueOf(formato.format(objService.getTerminals6to9())));
+                        item.setTax(String.valueOf(objService.getTerminals6to9() * stateTaxRate));
+                        item.setQuantity("1");
+                        items.add(item);
                     } else {
                         descripcion = "Terminal Adicional ID [" + objTerminal.getTerminalId() + "] - "
                                 + objService.getServiceName() + ": $"
@@ -323,7 +320,7 @@ public class InvoiceServices implements IInvoiceServices {
             List<String> listTerminalIds = new ArrayList<String>();
             switch (prmPaymentInfo.getPaymethod()) {
                 case "CREDIT-CARD":
-                    objBusiness.setLastPayment(LocalDate.now());
+                    objBusiness.setLastPayment(Instant.now());
 
                     for (TerminalsDoPaymentDTO objTerminal : prmPaymentInfo.getTerminalsDoPayment()) {
                         Service service = listService.get(objTerminal.getIdService());
@@ -332,14 +329,14 @@ public class InvoiceServices implements IInvoiceServices {
                         // se incrementa la fecha de expiración del terminal de acuerdo a la duración
                         // del servicio
                         if (objTer.getExpirationDate() != null && objTer.isEnable() && objTer.isPayment()) {
-                            if (objTer.getExpirationDate().isBefore(LocalDate.now())) {
-                                objTer.setExpirationDate(LocalDate.now().plusDays(service.getDuration()));
+                            if (objTer.getExpirationDate().isBefore(Instant.now())) {
+                                objTer.setExpirationDate(Instant.now().plus(Duration.ofDays(service.getDuration())));
                             } else {
-                                objTer.setExpirationDate(objTer.getExpirationDate().plusDays(service.getDuration()));
+                                objTer.setExpirationDate(objTer.getExpirationDate().plus(Duration.ofDays(service.getDuration())));
                             }
 
                         } else {
-                            objTer.setExpirationDate(LocalDate.now().plusDays(service.getDuration()));
+                            objTer.setExpirationDate(Instant.now().plus(Duration.ofDays(service.getDuration())));
                         }
                         if (objTer.isPrincipal()) {
                             objBusiness.setPriorNotification(null);
@@ -348,7 +345,7 @@ public class InvoiceServices implements IInvoiceServices {
 
                         }
                         objTer.setLastPaymentValue(objTerminal.getAmount());
-                        objTer.setPayment(true);
+                            objTer.setPayment(true);
                         objTer.setService(service);
                         objTer.setAutomaticPayments(prmPaymentInfo.isAutomaticPayments());
                         objTer.setLastPayment(objBusiness.getLastPayment());
@@ -373,7 +370,7 @@ public class InvoiceServices implements IInvoiceServices {
                     emailService.notifyPaymentCreditCard(objEmailBodyData);
                     break;
                 case "TOKEN":
-                    objBusiness.setLastPayment(LocalDate.now());
+                    objBusiness.setLastPayment(Instant.now());
 
                     for (TerminalsDoPaymentDTO objTerminal : prmPaymentInfo.getTerminalsDoPayment()) {
                         Service service = listService.get(objTerminal.getIdService());
@@ -382,14 +379,14 @@ public class InvoiceServices implements IInvoiceServices {
                         // se incrementa la fecha de expiración del terminal de acuerdo a la duración
                         // del servicio
                         if (objTer.getExpirationDate() != null && objTer.isEnable() && objTer.isPayment()) {
-                            if (objTer.getExpirationDate().isBefore(LocalDate.now())) {
-                                objTer.setExpirationDate(LocalDate.now().plusDays(service.getDuration()));
+                            if (objTer.getExpirationDate().isBefore(Instant.now())) {
+                                objTer.setExpirationDate(Instant.now().plus(Duration.ofDays(service.getDuration())));
                             } else {
-                                objTer.setExpirationDate(objTer.getExpirationDate().plusDays(service.getDuration()));
+                                objTer.setExpirationDate(objTer.getExpirationDate().plus(Duration.ofDays(service.getDuration())));
                             }
-                            
+
                         } else {
-                            objTer.setExpirationDate(LocalDate.now().plusDays(service.getDuration()));
+                            objTer.setExpirationDate(Instant.now().plus(Duration.ofDays(service.getDuration())));
                         }
                         if (objTer.isPrincipal()) {
                             objBusiness.setPriorNotification(null);
@@ -438,15 +435,15 @@ public class InvoiceServices implements IInvoiceServices {
                     req.setEnv("production");
                     req.setMetadata1("RETAIL MANAGER PR - RMPAY DASHBOARD");
                     String cleanPhone = prmPaymentInfo.getAthPhone().replaceAll("\\D", "");
-                    
+
                     req.setPhoneNumber(cleanPhone);
                     req.setSubtotal(String.valueOf(objInvoice.getSubTotal()));
                     req.setTax(String.valueOf(objInvoice.getStateTax()));
                     req.setTimeout("5000");
                     req.setTotal(String.valueOf(objInvoice.getTotalAmount()));
                     req.setItems(items);
-                    
-                     try {
+
+                    try {
                         payResponse = athMovilService.doPayment(req);
                         if (payResponse != null && payResponse.getStatus().compareTo("success") == 0 && payResponse.getData() == null) {
 
@@ -455,37 +452,34 @@ public class InvoiceServices implements IInvoiceServices {
 
                             return new ResponseEntity<>(json, HttpStatus.NOT_ACCEPTABLE);
                         }
-                     } catch (ConsumeAPIException e) {
-                       System.err.println("Error en el consumo de ATHMovil: CodigoHttp " + e.getHttpStatusCode() + " \n Mensje: " + e.getMessage());
+                    } catch (ConsumeAPIException e) {
+                        System.err.println("Error en el consumo de ATHMovil: CodigoHttp " + e.getHttpStatusCode() + " \n Mensje: " + e.getMessage());
                         JsonObject json = new JsonObject();
                         json.addProperty("msg", "Por favor comuniquese con el administrador de la página. Error: " + e.getMessage());
 
                         return new ResponseEntity<>(json, HttpStatus.BAD_GATEWAY);
-                     }
-                    
+                    }
+
                     for (TerminalsDoPaymentDTO objTerminal : prmPaymentInfo.getTerminalsDoPayment()) {
                         Service service = listService.get(objTerminal.getIdService());
                         Terminal objTer = this.serviceDBTerminal.findById(objTerminal.getTerminalId()).orElse(null);
                         objTer.setEnable(true);
+                        objTer.setPayment(true);
                         // se incrementa la fecha de expiración del terminal de acuerdo a la duración
                         // del servicio
-                        /*
-                         * if (objTer.getExpirationDate() != null && objTer.isEnable() &&
-                         * objTer.isPayment()) {
-                         * objTer.setExpirationDate(objTer.getExpirationDate().plusDays(service.
-                         * getDuration()));
-                         * } else {
-                         * objTer.setExpirationDate(LocalDate.now().plusDays(service.getDuration()));
-                         * }
-                         */
-                        // objTer.setPayment(false);
+                         if (objTer.getExpirationDate() != null && objTer.isEnable() && objTer.isPayment())
+                         {
+                            objTer.setExpirationDate(objTer.getExpirationDate().plus(Duration.ofDays(service.getDuration())));
+                         } else {
+                            objTer.setExpirationDate(Instant.now().plus(Duration.ofDays(service.getDuration())));
+                         }
                         objTer.setLastPaymentValue(objTerminal.getAmount());
                         objTer.setService(service);
                         objTer.setAutomaticPayments(prmPaymentInfo.isAutomaticPayments());
                         objTer = this.serviceDBTerminal.save(objTer);
                         listTerminalIds.add(objTerminal.getTerminalId());
                     }
-                    serviceReferenceNumber=gson.toJson(payResponse);
+                    serviceReferenceNumber = gson.toJson(payResponse);
                     objInvoice.setDate(LocalDate.now());
                     objInvoice.setTime(LocalTime.now());
                     objInvoice.setPaymentMethod(prmPaymentInfo.getPaymethod());
@@ -498,9 +492,9 @@ public class InvoiceServices implements IInvoiceServices {
                             listTerminalIds.toString().replace("[", "").replace("]", "").replace(" ", ""));
                     objEmailBodyData.setTerminalsDoPayment(prmPaymentInfo.getTerminalsDoPayment());
                     objInvoice.setATHMPaymentDetails(gson.toJson(objEmailBodyData));
-                            objInvoice = serviceDBInvoice.save(objInvoice);
+                    objInvoice = serviceDBInvoice.save(objInvoice);
                     //objEmailBodyData.setInvoiceNumber(objInvoice.getInvoiceNumber());
-                    
+
                     //emailService.notifyPaymentATHMovil(objEmailBodyData);
                     break;
                 case "BANK-ACCOUNT":
@@ -544,7 +538,7 @@ public class InvoiceServices implements IInvoiceServices {
                     emailService.notifyPaymentBankAccount(objEmailBodyData);
                     break;
                 case "PAID-WITH-DISCOUNT":
-                    objBusiness.setLastPayment(LocalDate.now());
+                    objBusiness.setLastPayment(Instant.now());
                     for (TerminalsDoPaymentDTO objTerminal : prmPaymentInfo.getTerminalsDoPayment()) {
                         Service service = listService.get(objTerminal.getIdService());
                         Terminal objTer = this.serviceDBTerminal.findById(objTerminal.getTerminalId()).orElse(null);
@@ -552,13 +546,13 @@ public class InvoiceServices implements IInvoiceServices {
                         // se incrementa la fecha de expiración del terminal de acuerdo a la duración
                         // del servicio
                         if (objTer.getExpirationDate() != null && objTer.isEnable() && objTer.isPayment()) {
-                            if (!objTer.getExpirationDate().isBefore(LocalDate.now())) {
-                                objTer.setExpirationDate(objTer.getExpirationDate().plusDays(service.getDuration()));
+                            if (!objTer.getExpirationDate().isBefore(Instant.now())) {
+                                objTer.setExpirationDate(objTer.getExpirationDate().plus(Duration.ofDays(service.getDuration())));
                             } else {
-                                objTer.setExpirationDate(LocalDate.now().plusDays(service.getDuration()));
+                                objTer.setExpirationDate(Instant.now().plus(Duration.ofDays(service.getDuration())));
                             }
                         } else {
-                            objTer.setExpirationDate(LocalDate.now().plusDays(service.getDuration()));
+                            objTer.setExpirationDate(Instant.now().plus(Duration.ofDays(service.getDuration())));
                         }
 
                         objTer.setPayment(true);
@@ -826,7 +820,7 @@ public class InvoiceServices implements IInvoiceServices {
      * @param prmPaymentInfo the payment information containing the confirmation
      *                       status and observation
      * @return a ResponseEntity containing the updated invoice information or an
-     *         error message
+     * error message
      * @throws EntidadNoExisteException if the invoice with the given invoice number
      *                                  does not exist in the database
      */
@@ -845,13 +839,13 @@ public class InvoiceServices implements IInvoiceServices {
                 objInvoice.setReferenceNumber(prmPaymentInfo.getObservation());
             }
         }
-        
+
         String terminalsIds = objInvoice.getTerminalIds();
         if (prmPaymentInfo.getConfirm()) {
 
             Business objBusiness = this.businessRepository.findById(objInvoice.getBusinessId()).orElse(null);
             if (objBusiness != null) {
-                objBusiness.setLastPayment(LocalDate.now());
+                objBusiness.setLastPayment(Instant.now());
                 this.businessRepository.save(objBusiness);
             }
             if (terminalsIds != null) {
@@ -859,23 +853,23 @@ public class InvoiceServices implements IInvoiceServices {
                 for (String terminalId : terminalIds) {
                     Terminal objTerminal = this.serviceDBTerminal.findById(terminalId).orElse(null);
                     if (objTerminal != null) {
-                        objTerminal.setLastPayment(LocalDate.now());
+                        objTerminal.setLastPayment(Instant.now());
                         objTerminal.setEnable(true);
                         objTerminal.setPayment(true);
                         // se incrementa la fecha de expiración del terminal de acuerdo a la duración
                         // del servicio
                         if (objTerminal.getExpirationDate() != null && objTerminal.isEnable()
                                 && objTerminal.isPayment()) {
-                            if (!objTerminal.getExpirationDate().isBefore(LocalDate.now())) {
+                            if (!objTerminal.getExpirationDate().isBefore(Instant.now())) {
                                 objTerminal.setExpirationDate(objTerminal.getExpirationDate()
-                                        .plusDays(objTerminal.getService().getDuration()));
+                                        .plus(Duration.ofDays(objTerminal.getService().getDuration())));
                             } else {
                                 objTerminal.setExpirationDate(
-                                        LocalDate.now().plusDays(objTerminal.getService().getDuration()));
+                                        Instant.now().plus(Duration.ofDays(objTerminal.getService().getDuration())));
                             }
                         } else {
                             objTerminal.setExpirationDate(
-                                    LocalDate.now().plusDays(objTerminal.getService().getDuration()));
+                                    Instant.now().plus(Duration.ofDays(objTerminal.getService().getDuration())));
                         }
                         if (objTerminal.isPrincipal()) {
                             objTerminal.getBusiness().setPriorNotification(null);
@@ -894,7 +888,7 @@ public class InvoiceServices implements IInvoiceServices {
                 objInvoice.setReferenceNumber("PAGO RECHAZADO");
             }
         }
-        if(objInvoice.getPaymentDescription() != null && objInvoice.getPaymentDescription().contains("PAGO CANCELADO POR EL USUARIO")) {
+        if (objInvoice.getPaymentDescription() != null && objInvoice.getPaymentDescription().contains("PAGO CANCELADO POR EL USUARIO")) {
             objInvoice.setReferenceNumber("PAGO CANCELADO POR EL USUARIO");
         }
         objInvoice = this.invoiceRepository.save(objInvoice);
@@ -1022,8 +1016,8 @@ public class InvoiceServices implements IInvoiceServices {
      *
      * @param prmBusinessId the ID of the business
      * @return a ResponseEntity containing a boolean value indicating if the payment
-     *         method exists
-     *         or not, wrapped in a ResponseEntity with HTTP status code 200
+     * method exists
+     * or not, wrapped in a ResponseEntity with HTTP status code 200
      * @throws EntidadNoExisteException if the business with the given ID does not
      *                                  exist in the database
      */
@@ -1047,7 +1041,7 @@ public class InvoiceServices implements IInvoiceServices {
      *
      * @param prmBusinessId the ID of the business
      * @return a ResponseEntity containing the payment method data, or an exception
-     *         if the business does not exist
+     * if the business does not exist
      * @throws EntidadNoExisteException if the business with the given ID does not
      *                                  exist in the database
      */
@@ -1073,7 +1067,7 @@ public class InvoiceServices implements IInvoiceServices {
      *
      * @param prmBusinessId the ID of the business
      * @return a ResponseEntity containing the result of the deletion operation, or
-     *         an exception if the business does not exist
+     * an exception if the business does not exist
      * @throws EntidadNoExisteException if the business with the given ID does not
      *                                  exist in the database
      */
@@ -1102,181 +1096,180 @@ public class InvoiceServices implements IInvoiceServices {
         return new ResponseEntity<>(true, HttpStatus.OK);
     }
 
-/**
- * Checks the status of an ATH Movil payment for a given invoice ID.
- *
- * @param invoiceId the ID of the invoice to check the payment status for
- * @return a ResponseEntity containing the FindPaymentResponse if successful,
- *         or an error message if an exception occurs
- * @throws EntidadNoExisteException if the invoice with the given ID does not
- *                                  exist in the database
- */
+    /**
+     * Checks the status of an ATH Movil payment for a given invoice ID.
+     *
+     * @param invoiceId the ID of the invoice to check the payment status for
+     * @return a ResponseEntity containing the FindPaymentResponse if successful,
+     * or an error message if an exception occurs
+     * @throws EntidadNoExisteException if the invoice with the given ID does not
+     *                                  exist in the database
+     */
 
     @Override
     @Transactional(readOnly = true)
     public ResponseEntity<?> checkStatusATHM(Long invoiceId) {
         Invoice invoice = this.invoiceRepository.findById(invoiceId).orElse(null);
-            if(invoice==null){
-                throw new EntidadNoExisteException("La Factura con invoiceId " + invoiceId + " no existen en la base de datos");
-            }
-            if(invoice.isInProcess()==false ){
-                FindPaymentResponse athmCancelPaymentResponse = ConverterJson.convertStr2RespDetTransactionATHM(invoice.getATHMPaymentDetails());
-                return new ResponseEntity<>(athmCancelPaymentResponse,HttpStatus.OK);
-            }
-            ATHMPaymentResponse pr=ConverterJson.convertStr2RespPaymentATHM(invoice.getReferenceNumber());
-            FindPaymentReqData request=new FindPaymentReqData();
-            request.setEcommerceId(pr.getData().getEcommerceId());
-            
-           
-            try{
-                 FindPaymentResponse resposne=athMovilService.findPayment(request);
-                 return new ResponseEntity<>(resposne,HttpStatus.OK);
-            } catch (ConsumeAPIException ex) {
-                        System.err.println("Error en el consumo de ATHMovil: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
-                        HashMap<String, String> map = new HashMap<>();
-                        map.put("msg", "Error en el consumo de ATHMovil: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
+        if (invoice == null) {
+            throw new EntidadNoExisteException("La Factura con invoiceId " + invoiceId + " no existen en la base de datos");
+        }
+        if (invoice.isInProcess() == false) {
+            FindPaymentResponse athmCancelPaymentResponse = ConverterJson.convertStr2RespDetTransactionATHM(invoice.getATHMPaymentDetails());
+            return new ResponseEntity<>(athmCancelPaymentResponse, HttpStatus.OK);
+        }
+        ATHMPaymentResponse pr = ConverterJson.convertStr2RespPaymentATHM(invoice.getReferenceNumber());
+        FindPaymentReqData request = new FindPaymentReqData();
+        request.setEcommerceId(pr.getData().getEcommerceId());
 
-                        return new ResponseEntity<>(map, HttpStatus.BAD_GATEWAY);
-                    }
+
+        try {
+            FindPaymentResponse resposne = athMovilService.findPayment(request);
+            return new ResponseEntity<>(resposne, HttpStatus.OK);
+        } catch (ConsumeAPIException ex) {
+            System.err.println("Error en el consumo de ATHMovil: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
+            HashMap<String, String> map = new HashMap<>();
+            map.put("msg", "Error en el consumo de ATHMovil: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
+
+            return new ResponseEntity<>(map, HttpStatus.BAD_GATEWAY);
+        }
     }
 
     @Override
     @Transactional
     public ResponseEntity<?> confirmTransactionATHM(Long invoiceId) {
-         
-            Invoice invoice = this.serviceDBInvoice.findById(invoiceId).orElse(null);
-            if(invoice==null){
-                throw new EntidadNoExisteException("La Factura con invoiceId " + invoiceId + " no existen en la base de datos");
-            }
-            if(invoice.isInProcess()==false ){
-                HashMap<String, String> json = new HashMap<>();
-                json.put("msg", "El pago ya ha sido confirmado o cancelado");
-                return new ResponseEntity<>(json,HttpStatus.BAD_REQUEST);
-            }
-            ATHMPaymentResponse pr=ConverterJson.convertStr2RespPaymentATHM(invoice.getReferenceNumber());
-            try{
-                 FindPaymentResponse resposne=athMovilService.confirmAuthorization(pr.getData().getAuth_token());
-                 if(resposne!=null){
-                     if("success".equals(resposne.getStatus()) && "COMPLETED".equals(resposne.getData().getEcommerceStatus())){
-                         EmailBodyData paymentInfoForEmail = ConverterJson.convertStr2EmailBodyData(invoice.getATHMPaymentDetails());
-                         System.out.println("ATHMPaymentResponse.token: "+pr.getData().getAuth_token());
-                         invoice.setATHMPaymentDetails(gson.toJson(resposne));
-                         invoice.setInProcess(false);
-                         invoice.setReferenceNumber(resposne.getData().getReferenceNumber());
-                         invoice = this.serviceDBInvoice.save(invoice);
-                         
-                         paymentInfoForEmail.setReferenceNumber(resposne.getData().getReferenceNumber());
-                         //Ejecuta la confirmación del pago,se reutiliza la logica ya implementada
-                         ConfirmPaymentDTO confirmPaymentDTO = new ConfirmPaymentDTO();
-                            confirmPaymentDTO.setConfirm(true);
-                            confirmPaymentDTO.setObservation("");
-                         this.confirmOrRejectPaymnt(invoiceId, confirmPaymentDTO);
-                         paymentInfoForEmail.setInvoiceNumber(invoice.getInvoiceNumber());
-                         this.emailService.notifyPaymentATHMovil(paymentInfoForEmail);
-                        return new ResponseEntity<>(invoice,HttpStatus.OK);
-                     }
-                 }
-                 invoice.setInProcess(false);
-                 if(resposne==null)
-                    invoice.setReferenceNumber("PAGO NO PROCESADO - ATHM NO RESPONDIO");
-                 else
-                    invoice.setReferenceNumber("PAGO NO PROCESADO: "+resposne.getStatus()+" "+resposne.getMessage()+"-"+resposne.getErrorcode());
-                 invoice = this.serviceDBInvoice.save(invoice);
-                 return new ResponseEntity<>(invoice,HttpStatus.REQUEST_TIMEOUT);
-            } catch (ConsumeAPIException ex) {
 
-                        System.err.println("Error en el consumo de ATHMovil EN com.retailmanager.rmpaydashboard.services.services.InvoiceServices.confirmTransactionATHM: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
-                        HashMap<String, String> json = new HashMap<>();
-                        json.put("msg", "Error en el consumo de ATHMovil: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
+        Invoice invoice = this.serviceDBInvoice.findById(invoiceId).orElse(null);
+        if (invoice == null) {
+            throw new EntidadNoExisteException("La Factura con invoiceId " + invoiceId + " no existen en la base de datos");
+        }
+        if (invoice.isInProcess() == false) {
+            HashMap<String, String> json = new HashMap<>();
+            json.put("msg", "El pago ya ha sido confirmado o cancelado");
+            return new ResponseEntity<>(json, HttpStatus.BAD_REQUEST);
+        }
+        ATHMPaymentResponse pr = ConverterJson.convertStr2RespPaymentATHM(invoice.getReferenceNumber());
+        try {
+            FindPaymentResponse resposne = athMovilService.confirmAuthorization(pr.getData().getAuth_token());
+            if (resposne != null) {
+                if ("success".equals(resposne.getStatus()) && "COMPLETED".equals(resposne.getData().getEcommerceStatus())) {
+                    EmailBodyData paymentInfoForEmail = ConverterJson.convertStr2EmailBodyData(invoice.getATHMPaymentDetails());
+                    System.out.println("ATHMPaymentResponse.token: " + pr.getData().getAuth_token());
+                    invoice.setATHMPaymentDetails(gson.toJson(resposne));
+                    invoice.setInProcess(false);
+                    invoice.setReferenceNumber(resposne.getData().getReferenceNumber());
+                    invoice = this.serviceDBInvoice.save(invoice);
 
-                        return new ResponseEntity<>(json,HttpStatus.BAD_GATEWAY);
-                    }
+                    paymentInfoForEmail.setReferenceNumber(resposne.getData().getReferenceNumber());
+                    //Ejecuta la confirmación del pago,se reutiliza la logica ya implementada
+                    ConfirmPaymentDTO confirmPaymentDTO = new ConfirmPaymentDTO();
+                    confirmPaymentDTO.setConfirm(true);
+                    confirmPaymentDTO.setObservation("");
+                    this.confirmOrRejectPaymnt(invoiceId, confirmPaymentDTO);
+                    paymentInfoForEmail.setInvoiceNumber(invoice.getInvoiceNumber());
+                    this.emailService.notifyPaymentATHMovil(paymentInfoForEmail);
+                    return new ResponseEntity<>(invoice, HttpStatus.OK);
+                }
+            }
+            invoice.setInProcess(false);
+            if (resposne == null)
+                invoice.setReferenceNumber("PAGO NO PROCESADO - ATHM NO RESPONDIO");
+            else
+                invoice.setReferenceNumber("PAGO NO PROCESADO: " + resposne.getStatus() + " " + resposne.getMessage() + "-" + resposne.getErrorcode());
+            invoice = this.serviceDBInvoice.save(invoice);
+            return new ResponseEntity<>(invoice, HttpStatus.REQUEST_TIMEOUT);
+        } catch (ConsumeAPIException ex) {
+
+            System.err.println("Error en el consumo de ATHMovil EN com.retailmanager.rmpaydashboard.services.services.InvoiceServices.confirmTransactionATHM: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
+            HashMap<String, String> json = new HashMap<>();
+            json.put("msg", "Error en el consumo de ATHMovil: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
+
+            return new ResponseEntity<>(json, HttpStatus.BAD_GATEWAY);
+        }
     }
-
-
 
 
     /**
      * Cancela un pago en la API de ATH Móvil.
+     *
      * @param invoiceId El identificador de la factura a cancelar.
      * @return La respuesta de la API con el resultado de la cancelación.
      * @throws EntidadNoExisteException Si la factura con el identificador
      *                                  especificado no existe en la base de datos.
-     * @throws ConsumeAPIException Si ocurre un error al consumir la API.
+     * @throws ConsumeAPIException      Si ocurre un error al consumir la API.
      */
     @Override
-    @Transactional  
+    @Transactional
     public ResponseEntity<?> cancelTransactionATHM(Long invoiceId) {
-        
-            Invoice invoice = this.serviceDBInvoice.findById(invoiceId).orElse(null);
-            if(invoice==null){
-                throw new EntidadNoExisteException("La Factura con invoiceId " + invoiceId + " no existen en la base de datos");
-            }
-            if(invoice.getReferenceNumber() != null && invoice.getReferenceNumber().contains("PAGO CANCELADO POR EL USUARIO") && invoice.isInProcess() == false){
-                HashMap<String, String> json = new HashMap<>();
-                json.put("msg", "El pago ya ha sido cancelado");
-                return new ResponseEntity<>(json,HttpStatus.BAD_REQUEST);
-            }
-            try{
-                ATHMPaymentResponse pr=ConverterJson.convertStr2RespPaymentATHM(invoice.getReferenceNumber());
-                FindPaymentReqData request=new FindPaymentReqData();
-                request.setEcommerceId(pr.getData().getEcommerceId());
-                FindPaymentResponse rsp2=athMovilService.findPayment(request);
-                if(rsp2!=null && rsp2.getData().getEcommerceStatus().equals("CANCEL")){
-                         EmailBodyData paymentInfoForEmail = ConverterJson.convertStr2EmailBodyData(invoice.getATHMPaymentDetails());
-                         
-                         invoice.setATHMPaymentDetails(gson.toJson(rsp2));
-                         invoice.setInProcess(false);
-                         invoice.setReferenceNumber("PAGO CANCELADO POR EL USUARIO");
-                         invoice = this.serviceDBInvoice.save(invoice);
-                         paymentInfoForEmail.setReferenceNumber(invoice.getReferenceNumber());
-                         emailService.notifyPaymentATHMovil(paymentInfoForEmail);
-                         //Ejecuta la confirmación del pago,se reutiliza la logica ya implementada
-                          ConfirmPaymentDTO confirmPaymentDTO = new ConfirmPaymentDTO();
-                          confirmPaymentDTO.setConfirm(false);
-                          confirmPaymentDTO.setObservation("");
-                         this.confirmOrRejectPaymnt(invoiceId, confirmPaymentDTO);
-                          return new ResponseEntity<>(invoice,HttpStatus.OK);
-                }else{
-                 ATHMCancelPaymentResponse resposne=athMovilService.cancel(request);
-                 rsp2=athMovilService.findPayment(request);
-                 if(resposne!=null){
-                     if("success".equals(resposne.getStatus()) ){
-                         EmailBodyData paymentInfoForEmail = ConverterJson.convertStr2EmailBodyData(invoice.getATHMPaymentDetails());
-                         
-                         invoice.setATHMPaymentDetails(gson.toJson(rsp2));
-                         invoice.setInProcess(false);
-                         invoice.setReferenceNumber("PAGO CANCELADO POR EL USUARIO");
-                         invoice = this.serviceDBInvoice.save(invoice);
-                         
-                         paymentInfoForEmail.setReferenceNumber(invoice.getReferenceNumber());
-                         emailService.notifyPaymentATHMovil(paymentInfoForEmail);
-                         //Ejecuta la confirmación del pago,se reutiliza la logica ya implementada
-                          ConfirmPaymentDTO confirmPaymentDTO = new ConfirmPaymentDTO();
-                          confirmPaymentDTO.setConfirm(false);
-                          confirmPaymentDTO.setObservation("");
-                         this.confirmOrRejectPaymnt(invoiceId, confirmPaymentDTO);
-                          return new ResponseEntity<>(invoice,HttpStatus.OK);
-                     }
-                 }}
-                        HashMap<String, String> json = new HashMap<>();
-                        json.put("msg", "El pago no pudo ser cancelado: "+(rsp2!=null?rsp2.getMessage():"No se pudo obtener el estado del pago"));
-                        System.err.println("Error en la cancelación del Pago: "+json.get("msg"));
-                 return new ResponseEntity<>(json,HttpStatus.BAD_GATEWAY);
-            } catch (ConsumeAPIException ex) {
-                        System.err.println("Error en el consumo de ATHMovil: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
-                        JsonObject json = new JsonObject();
-                        json.addProperty("msg", "Error en el consumo de ATHMovil: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
 
-                        return new ResponseEntity<>(json,HttpStatus.BAD_GATEWAY);
-                    }
-            catch (Exception ex) {
-                        System.err.println("Error en la cancelación del Pago  Mensaje: " + ex.getMessage());
-                        JsonObject json = new JsonObject();
-                        json.addProperty("msg", "Error en la cancelación del Pago  Mensaje: " + ex.getMessage());
+        Invoice invoice = this.serviceDBInvoice.findById(invoiceId).orElse(null);
+        if (invoice == null) {
+            throw new EntidadNoExisteException("La Factura con invoiceId " + invoiceId + " no existen en la base de datos");
+        }
+        if (invoice.getReferenceNumber() != null && invoice.getReferenceNumber().contains("PAGO CANCELADO POR EL USUARIO") && invoice.isInProcess() == false) {
+            HashMap<String, String> json = new HashMap<>();
+            json.put("msg", "El pago ya ha sido cancelado");
+            return new ResponseEntity<>(json, HttpStatus.BAD_REQUEST);
+        }
+        try {
+            ATHMPaymentResponse pr = ConverterJson.convertStr2RespPaymentATHM(invoice.getReferenceNumber());
+            FindPaymentReqData request = new FindPaymentReqData();
+            request.setEcommerceId(pr.getData().getEcommerceId());
+            FindPaymentResponse rsp2 = athMovilService.findPayment(request);
+            if (rsp2 != null && rsp2.getData().getEcommerceStatus().equals("CANCEL")) {
+                EmailBodyData paymentInfoForEmail = ConverterJson.convertStr2EmailBodyData(invoice.getATHMPaymentDetails());
 
-                        return new ResponseEntity<>(json,HttpStatus.BAD_GATEWAY);
+                invoice.setATHMPaymentDetails(gson.toJson(rsp2));
+                invoice.setInProcess(false);
+                invoice.setReferenceNumber("PAGO CANCELADO POR EL USUARIO");
+                invoice = this.serviceDBInvoice.save(invoice);
+                paymentInfoForEmail.setReferenceNumber(invoice.getReferenceNumber());
+                emailService.notifyPaymentATHMovil(paymentInfoForEmail);
+                //Ejecuta la confirmación del pago,se reutiliza la logica ya implementada
+                ConfirmPaymentDTO confirmPaymentDTO = new ConfirmPaymentDTO();
+                confirmPaymentDTO.setConfirm(false);
+                confirmPaymentDTO.setObservation("");
+                this.confirmOrRejectPaymnt(invoiceId, confirmPaymentDTO);
+                return new ResponseEntity<>(invoice, HttpStatus.OK);
+            } else {
+                ATHMCancelPaymentResponse resposne = athMovilService.cancel(request);
+                rsp2 = athMovilService.findPayment(request);
+                if (resposne != null) {
+                    if ("success".equals(resposne.getStatus())) {
+                        EmailBodyData paymentInfoForEmail = ConverterJson.convertStr2EmailBodyData(invoice.getATHMPaymentDetails());
+
+                        invoice.setATHMPaymentDetails(gson.toJson(rsp2));
+                        invoice.setInProcess(false);
+                        invoice.setReferenceNumber("PAGO CANCELADO POR EL USUARIO");
+                        invoice = this.serviceDBInvoice.save(invoice);
+
+                        paymentInfoForEmail.setReferenceNumber(invoice.getReferenceNumber());
+                        emailService.notifyPaymentATHMovil(paymentInfoForEmail);
+                        //Ejecuta la confirmación del pago,se reutiliza la logica ya implementada
+                        ConfirmPaymentDTO confirmPaymentDTO = new ConfirmPaymentDTO();
+                        confirmPaymentDTO.setConfirm(false);
+                        confirmPaymentDTO.setObservation("");
+                        this.confirmOrRejectPaymnt(invoiceId, confirmPaymentDTO);
+                        return new ResponseEntity<>(invoice, HttpStatus.OK);
                     }
+                }
+            }
+            HashMap<String, String> json = new HashMap<>();
+            json.put("msg", "El pago no pudo ser cancelado: " + (rsp2 != null ? rsp2.getMessage() : "No se pudo obtener el estado del pago"));
+            System.err.println("Error en la cancelación del Pago: " + json.get("msg"));
+            return new ResponseEntity<>(json, HttpStatus.BAD_GATEWAY);
+        } catch (ConsumeAPIException ex) {
+            System.err.println("Error en el consumo de ATHMovil: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
+            JsonObject json = new JsonObject();
+            json.addProperty("msg", "Error en el consumo de ATHMovil: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
+
+            return new ResponseEntity<>(json, HttpStatus.BAD_GATEWAY);
+        } catch (Exception ex) {
+            System.err.println("Error en la cancelación del Pago  Mensaje: " + ex.getMessage());
+            JsonObject json = new JsonObject();
+            json.addProperty("msg", "Error en la cancelación del Pago  Mensaje: " + ex.getMessage());
+
+            return new ResponseEntity<>(json, HttpStatus.BAD_GATEWAY);
+        }
     }
 
 }

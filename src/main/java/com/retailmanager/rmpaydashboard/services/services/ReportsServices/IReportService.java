@@ -20,10 +20,10 @@ public interface IReportService {
      * @param endDate
      * @return
      */
-    public ResponseEntity<?> getTips(Long businessId,LocalDate startDate, LocalDate endDate);
-    public ResponseEntity<?> getTaxes(Long businessId,LocalDate startDate, LocalDate endDate);
+    public ResponseEntity<?> getTips(Long businessId, Instant startUtc, Instant endUtc);
+    public ResponseEntity<?> getTaxes(Long businessId, Instant startUtc, Instant endUtc);
 
-    public ResponseEntity<?> getReceipts(Long businessId,LocalDate startDate, LocalDate endDate);
+    public ResponseEntity<?> getReceipts(Long businessId, Instant startUtc, Instant endUtc);
 
     public ResponseEntity<?> getActivationsReport(int month);
 

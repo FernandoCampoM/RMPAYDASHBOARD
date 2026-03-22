@@ -1,8 +1,14 @@
 package com.retailmanager.rmpaydashboard.services.services.BusinessService;
 
 import java.text.DecimalFormat;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -132,7 +138,7 @@ public class BusinessService implements IBusinessService {
                     objBusiness.setUser(existUser.get());
                 }
             }
-            objBusiness.setRegisterDate(LocalDate.now());
+            objBusiness.setRegisterDate(Instant.now());
             objBusiness=this.serviceDBBusiness.save(objBusiness);
             // Si el negocio se ha creado correctamente, 
             //creamos el usuario administrador por defecto
@@ -328,9 +334,9 @@ public class BusinessService implements IBusinessService {
                     objBusiness.setEnable(true);
                     objBusiness.setDiscount(0.0);
                     if(prmBusiness.getPaymethod()!=null && prmBusiness.getPaymethod().equals("CREDIT-CARD")){
-                        objBusiness.setLastPayment(LocalDate.now());
+                        objBusiness.setLastPayment(Instant.now());
                     }
-                    objBusiness.setRegisterDate(LocalDate.now());
+                    objBusiness.setRegisterDate(Instant.now());
                     objBusiness=this.serviceDBBusiness.save(objBusiness);
                     // Si el negocio se ha creado correctamente, 
             //creamos el usuario administrador por defecto
@@ -379,10 +385,10 @@ public class BusinessService implements IBusinessService {
                                         TerminalsDoPaymentDTO objTerminalsDoPaymentDTO=new TerminalsDoPaymentDTO();
                                         Terminal objTerminal=new Terminal();
                                         objTerminal.setTerminalId(this.terminalService.getTerminalId());
-                                        objTerminal.setRegisterDate(LocalDate.now());
+                                        objTerminal.setRegisterDate(Instant.now());
                                         objTerminal.setEnable(true);
                                         objTerminal.setBusiness(objBusiness);
-                                        objTerminal.setExpirationDate(LocalDate.now().plusDays(objService.getDuration()));
+                                        objTerminal.setExpirationDate(Instant.now().plus(Duration.ofDays(objService.getDuration())));
                                         objTerminal.setSerial(null);
                                         objTerminal.setName(objTerminal.getTerminalId());
                                         objTerminal.setService(objService);
@@ -430,10 +436,10 @@ public class BusinessService implements IBusinessService {
                                         TerminalsDoPaymentDTO objTerminalsDoPaymentDTO=new TerminalsDoPaymentDTO();
                                         Terminal objTerminal=new Terminal();
                                         objTerminal.setTerminalId(this.terminalService.getTerminalId());
-                                        objTerminal.setRegisterDate(LocalDate.now());
+                                        objTerminal.setRegisterDate(Instant.now());
                                         objTerminal.setEnable(true);
                                         objTerminal.setBusiness(objBusiness);
-                                        objTerminal.setExpirationDate(LocalDate.now().plusDays(objService.getDuration()));
+                                        objTerminal.setExpirationDate(Instant.now().plus(Duration.ofDays(objService.getDuration())));
                                         objTerminal.setSerial(null);
                                         objTerminal.setName(objTerminal.getTerminalId());
                                         objTerminal.setService(objService);
@@ -480,10 +486,10 @@ public class BusinessService implements IBusinessService {
                                         TerminalsDoPaymentDTO objTerminalsDoPaymentDTO=new TerminalsDoPaymentDTO();
                                         Terminal objTerminal=new Terminal();
                                         objTerminal.setTerminalId(this.terminalService.getTerminalId());
-                                        objTerminal.setRegisterDate(LocalDate.now());
+                                        objTerminal.setRegisterDate(Instant.now());
                                         objTerminal.setEnable(false);
                                         objTerminal.setBusiness(objBusiness);
-                                        objTerminal.setExpirationDate(LocalDate.now().plusDays(objService.getDuration()));
+                                        objTerminal.setExpirationDate(Instant.now().plus(Duration.ofDays(objService.getDuration())));
                                         objTerminal.setSerial(null);
                                         objTerminal.setName(objTerminal.getTerminalId());
                                         objTerminal.setService(objService);
@@ -921,7 +927,11 @@ public class BusinessService implements IBusinessService {
             }
             if(terminal.getRegisterDate()!=null && terminal.getLastPayment()!=null ){
                 totalSales+=terminal.getLastPaymentValue();
-                if( terminal.getRegisterDate().getMonth()==terminal.getLastPayment().getMonth() && terminal.getRegisterDate().getYear()==terminal.getLastPayment().getYear()){
+
+                boolean sameMonth = YearMonth.from(terminal.getRegisterDate().atZone(ZoneOffset.UTC))
+                        .equals(YearMonth.from(terminal.getLastPayment().atZone(ZoneOffset.UTC)));
+
+                if(sameMonth){
                     if(terminal.isPrincipal()){
                         activacion.put("serviceName", "TERMINAL PRINCIPAL"+terminal.getService().getServiceName());
                     }else{
