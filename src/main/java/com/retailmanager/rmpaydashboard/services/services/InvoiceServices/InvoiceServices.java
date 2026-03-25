@@ -10,6 +10,7 @@ import com.retailmanager.rmpaydashboard.models.Invoice;
 import com.retailmanager.rmpaydashboard.models.PaymentData;
 import com.retailmanager.rmpaydashboard.models.Service;
 import com.retailmanager.rmpaydashboard.models.Terminal;
+import com.retailmanager.rmpaydashboard.models.enums.Environment;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.FileRepository;
 import com.retailmanager.rmpaydashboard.repositories.InvoiceRepository;
@@ -39,10 +40,13 @@ import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -87,6 +91,13 @@ public class InvoiceServices implements IInvoiceServices {
     @Autowired
     PaymentDataRepository paymentDataRepository;
     Gson gson = new Gson();
+
+    @Value("${spring.profiles.active}")
+    private String activeProfile;
+
+    public boolean isProd() {
+        return Environment.PROD.name().equalsIgnoreCase(activeProfile);
+    }
 
     /**
      * Retrieves the payment history for a given business within a specified date
@@ -183,7 +194,10 @@ public class InvoiceServices implements IInvoiceServices {
                     //INFORMACIÓN PARA ATH MOVIL
                     item.setDescription(descripcion);
                     item.setName(objService.getServiceName());
-                    item.setPrice(String.valueOf(formato.format(objService.getServiceValue())));
+                    double result = BigDecimal.valueOf(objService.getServiceValue())
+                            .setScale(2, RoundingMode.HALF_UP)
+                            .doubleValue();
+                    item.setPrice(String.valueOf(result));
                     item.setTax(String.valueOf(objService.getServiceValue() * stateTaxRate));
                     item.setQuantity("1");
                     items.add(item);
@@ -197,7 +211,10 @@ public class InvoiceServices implements IInvoiceServices {
                         //INFORMACIÓN PARA ATH MOVIL
                         item.setDescription(descripcion);
                         item.setName(objService.getServiceName());
-                        item.setPrice(String.valueOf(formato.format(objService.getTerminals2to5())));
+                        double result = BigDecimal.valueOf(objService.getTerminals2to5())
+                                .setScale(2, RoundingMode.HALF_UP)
+                                .doubleValue();
+                        item.setPrice(String.valueOf(result));
                         item.setTax(String.valueOf(objService.getTerminals2to5() * stateTaxRate));
                         item.setQuantity("1");
                         items.add(item);
@@ -209,7 +226,10 @@ public class InvoiceServices implements IInvoiceServices {
                         //INFORMACIÓN PARA ATH MOVIL
                         item.setDescription(descripcion);
                         item.setName(objService.getServiceName());
-                        item.setPrice(String.valueOf(formato.format(objService.getTerminals6to9())));
+                        double result = BigDecimal.valueOf(objService.getTerminals6to9())
+                                .setScale(2, RoundingMode.HALF_UP)
+                                .doubleValue();
+                        item.setPrice(String.valueOf(result));
                         item.setTax(String.valueOf(objService.getTerminals6to9() * stateTaxRate));
                         item.setQuantity("1");
                         items.add(item);
@@ -221,7 +241,10 @@ public class InvoiceServices implements IInvoiceServices {
                         //INFORMACIÓN PARA ATH MOVIL
                         item.setDescription(descripcion);
                         item.setName(objService.getServiceName());
-                        item.setPrice(String.valueOf(formato.format(objService.getTerminals10())));
+                        double result = BigDecimal.valueOf(objService.getTerminals10())
+                                .setScale(2, RoundingMode.HALF_UP)
+                                .doubleValue();
+                        item.setPrice(String.valueOf(result));
                         item.setTax(String.valueOf(objService.getTerminals10() * stateTaxRate));
                         item.setQuantity("1");
                         items.add(item);
@@ -440,9 +463,12 @@ public class InvoiceServices implements IInvoiceServices {
                     req.setSubtotal(String.valueOf(objInvoice.getSubTotal()));
                     req.setTax(String.valueOf(objInvoice.getStateTax()));
                     req.setTimeout("5000");
-                    req.setTotal(String.valueOf(objInvoice.getTotalAmount()));
+                    double resultado = BigDecimal.valueOf(objInvoice.getTotalAmount())
+                            .setScale(2, RoundingMode.HALF_UP)
+                            .doubleValue();
+                    req.setTotal(String.valueOf(resultado));
                     req.setItems(items);
-
+                    System.out.println();
                     try {
                         payResponse = athMovilService.doPayment(req);
                         if (payResponse != null && payResponse.getStatus().compareTo("success") == 0 && payResponse.getData() == null) {
@@ -464,15 +490,17 @@ public class InvoiceServices implements IInvoiceServices {
                         Service service = listService.get(objTerminal.getIdService());
                         Terminal objTer = this.serviceDBTerminal.findById(objTerminal.getTerminalId()).orElse(null);
                         objTer.setEnable(true);
-                        objTer.setPayment(true);
+
                         // se incrementa la fecha de expiración del terminal de acuerdo a la duración
                         // del servicio
+                        /*
                          if (objTer.getExpirationDate() != null && objTer.isEnable() && objTer.isPayment())
                          {
                             objTer.setExpirationDate(objTer.getExpirationDate().plus(Duration.ofDays(service.getDuration())));
                          } else {
                             objTer.setExpirationDate(Instant.now().plus(Duration.ofDays(service.getDuration())));
-                         }
+                         }*/
+                        //objTer.setPayment(true);
                         objTer.setLastPaymentValue(objTerminal.getAmount());
                         objTer.setService(service);
                         objTer.setAutomaticPayments(prmPaymentInfo.isAutomaticPayments());
@@ -841,7 +869,7 @@ public class InvoiceServices implements IInvoiceServices {
         }
 
         String terminalsIds = objInvoice.getTerminalIds();
-        if (prmPaymentInfo.getConfirm()) {
+        if (prmPaymentInfo.getConfirm() || !isProd()) {
 
             Business objBusiness = this.businessRepository.findById(objInvoice.getBusinessId()).orElse(null);
             if (objBusiness != null) {
@@ -1124,6 +1152,12 @@ public class InvoiceServices implements IInvoiceServices {
 
         try {
             FindPaymentResponse resposne = athMovilService.findPayment(request);
+
+            if (!isProd()){
+                resposne.getData().setEcommerceStatus("CONFIRM");
+                cancelTransactionATHM(invoiceId);
+            }
+
             return new ResponseEntity<>(resposne, HttpStatus.OK);
         } catch (ConsumeAPIException ex) {
             System.err.println("Error en el consumo de ATHMovil: CodigoHttp " + ex.getHttpStatusCode() + " \n Mensje: " + ex.getMessage());
@@ -1138,6 +1172,13 @@ public class InvoiceServices implements IInvoiceServices {
     @Transactional
     public ResponseEntity<?> confirmTransactionATHM(Long invoiceId) {
 
+        if (!isProd()){
+            ConfirmPaymentDTO confirmPaymentDTO = new ConfirmPaymentDTO();
+            confirmPaymentDTO.setConfirm(true);
+            confirmPaymentDTO.setObservation("");
+            this.confirmOrRejectPaymnt(invoiceId, confirmPaymentDTO);
+            return new ResponseEntity<>(confirmPaymentDTO, HttpStatus.OK);
+        }
         Invoice invoice = this.serviceDBInvoice.findById(invoiceId).orElse(null);
         if (invoice == null) {
             throw new EntidadNoExisteException("La Factura con invoiceId " + invoiceId + " no existen en la base de datos");
