@@ -283,7 +283,10 @@ public class InvoiceServices implements IInvoiceServices {
             objEmailBodyData.setAdditionalTerminals((Integer) prmPaymentInfo.getTerminalsNumber());
             switch (prmPaymentInfo.getPaymethod()) {
                 case "CREDIT-CARD":
-                    respPayment = blackStoneService.paymentWithCreditCard(String.valueOf(formato.format(totalAmount)),
+                    double result = BigDecimal.valueOf(totalAmount)
+                            .setScale(2, RoundingMode.HALF_UP)
+                            .doubleValue();
+                    respPayment = blackStoneService.paymentWithCreditCard(String.valueOf(result),
                             objBusiness.getAddress().getZipcode(),
                             prmPaymentInfo.getCreditcarnumber().replaceAll("-", ""),
                             prmPaymentInfo.getExpDateMonth() + prmPaymentInfo.getExpDateYear(),
@@ -468,7 +471,6 @@ public class InvoiceServices implements IInvoiceServices {
                             .doubleValue();
                     req.setTotal(String.valueOf(resultado));
                     req.setItems(items);
-                    System.out.println();
                     try {
                         payResponse = athMovilService.doPayment(req);
                         if (payResponse != null && payResponse.getStatus().compareTo("success") == 0 && payResponse.getData() == null) {
