@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.CascadeType;
@@ -37,6 +38,6 @@ public class Category {
     private Business business;
     private String color;
     private String position;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

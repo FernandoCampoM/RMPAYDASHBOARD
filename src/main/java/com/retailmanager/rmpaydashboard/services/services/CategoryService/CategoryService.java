@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.services.services.CategoryService;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -61,8 +62,8 @@ public class CategoryService implements ICategoryService {
         }
         ResponseEntity<?> rta;
          Category objCategory= this.mapper.map(prmCategory, Category.class);
-         objCategory.setCreatedAt(LocalDateTime.now());
-            objCategory.setUpdatedAt(LocalDateTime.now());
+         objCategory.setCreatedAt(Instant.now());
+            objCategory.setUpdatedAt(Instant.now());
          if(objCategory!=null){
             Long businessId=prmCategory.getBusinesId();
             if(businessId!=null){
@@ -123,7 +124,7 @@ public class CategoryService implements ICategoryService {
                     throw objExeption;
                 }
             }
-            objCategory.setUpdatedAt(LocalDateTime.now());
+            objCategory.setUpdatedAt(Instant.now());
              objCategory.setEnable(prmCategory.getEnable());
              objCategory.setName(prmCategory.getName());
              objCategory.setColor(prmCategory.getColor());
@@ -206,7 +207,7 @@ public class CategoryService implements ICategoryService {
             Optional<Category> optional= this.serviceDBCategory.findById(categoryId);
             if(optional.isPresent()){
                 optional.get().setEnable(enable);
-                optional.get().setUpdatedAt(LocalDateTime.now());
+                optional.get().setUpdatedAt(Instant.now());
                 this.serviceDBCategory.save(optional.get());
                 if(enable){
                     for(UsersBusiness usersBusiness:optional.get().getBusiness().getUsersBusiness()){

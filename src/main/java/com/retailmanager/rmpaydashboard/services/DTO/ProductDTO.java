@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.services.DTO;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -70,10 +71,10 @@ public class ProductDTO {
     private Boolean enable;
 
     private int suggestedPurchase;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime createdAt;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime updatedAt;
+    //@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    private Instant createdAt;
+    //@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    private Instant updatedAt;
 
     public static ProductDTO tOProduct(Product product) {
         ProductDTO objProduct = new ProductDTO();

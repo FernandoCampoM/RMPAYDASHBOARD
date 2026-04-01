@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -115,8 +116,8 @@ public class ProductService implements IProductService {
             }
             Product objProduct = this.mapperBase.map(prmProduct, Product.class);
             objProduct.setCategory(optionalCategory.get());
-            objProduct.setCreatedAt(LocalDateTime.now());
-            objProduct.setUpdatedAt(LocalDateTime.now());
+            objProduct.setCreatedAt(Instant.now());
+            objProduct.setUpdatedAt(Instant.now());
             if(objProduct!=null){
                 objProduct = this.serviceDBProducts.save(objProduct);
                 for(UsersBusiness usersBusiness:objProduct.getCategory().getBusiness().getUsersBusiness()){
@@ -186,7 +187,7 @@ public class ProductService implements IProductService {
         objProduct.setMinimumLevel(prmProduct.getMinimumLevel());
         objProduct.setMaximumLevel(prmProduct.getMaximumLevel());
         objProduct.setName(prmProduct.getName());
-        objProduct.setUpdatedAt(LocalDateTime.now());
+        objProduct.setUpdatedAt(Instant.now());
         Long categoryId=prmProduct.getIdCategory();
         if(categoryId!=null){
             Optional<Category> optionalCategory = this.serviceDBCategory.findById(categoryId);
@@ -377,6 +378,9 @@ public class ProductService implements IProductService {
                     objCategory.setPosition(String.valueOf(maxPosition!=null?maxPosition+1:1L));
                     objCategory.setName(categoryName);
                     objCategory.setBusiness(business);
+                    objCategory.setCreatedAt(Instant.now());
+                    objCategory.setUpdatedAt(Instant.now());
+                    objCategory.setColor("Gris");
                     if(productDTO.getPosition()==null){
                         maxPosition++;
                     }else{
@@ -398,8 +402,8 @@ public class ProductService implements IProductService {
                 }
             }
             if(objProduct!=null){
-                objProduct.setCreatedAt(LocalDateTime.now());
-                objProduct.setUpdatedAt(LocalDateTime.now());
+                objProduct.setCreatedAt(Instant.now());
+                objProduct.setUpdatedAt(Instant.now());
                 objProduct = this.serviceDBProducts.save(objProduct);
                 
             }
@@ -432,7 +436,7 @@ public class ProductService implements IProductService {
             Optional<Product> optional= this.serviceDBProducts.findById(productId);
             if(optional.isPresent()){
                 optional.get().setEnable(enable);
-                optional.get().setUpdatedAt(LocalDateTime.now());
+                optional.get().setUpdatedAt(Instant.now());
                 this.serviceDBProducts.save(optional.get());
                 if(enable){
                     for(UsersBusiness usersBusiness:optional.get().getCategory().getBusiness().getUsersBusiness()){
