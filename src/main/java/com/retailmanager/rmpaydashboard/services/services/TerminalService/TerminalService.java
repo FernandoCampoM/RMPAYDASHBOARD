@@ -1,6 +1,7 @@
 package com.retailmanager.rmpaydashboard.services.services.TerminalService;
 
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.ConsumeAPIException;
+import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.DataInconsistencyException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadNoExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadYaExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.TerminalDisabled;
@@ -12,6 +13,7 @@ import com.retailmanager.rmpaydashboard.models.Terminal;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.InvoiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.ServiceRepository;
+import com.retailmanager.rmpaydashboard.repositories.ShiftReporsitory;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.BuyTerminalDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalDTO;
@@ -58,6 +60,8 @@ public class TerminalService implements ITerminalService {
     private IEmailService emailService;
     @Autowired
     private InvoiceRepository serviceDBInvoice;
+    @Autowired
+    private ShiftReporsitory shiftReporsitory;
 
     DecimalFormat formato = new DecimalFormat("#.##");
     String msgError = "";
@@ -188,12 +192,19 @@ public class TerminalService implements ITerminalService {
             Optional<Terminal> optional = this.serviceDBTerminal.findById(terminalId);
             if (optional.isPresent()) {
                 Terminal objTerminal = optional.get();
-                if (objTerminal != null) {
-                    objTerminal.setSerial(null);
-                    this.serviceDBTerminal.save(objTerminal);
-                    bandera = true;
+
+                int contShift = shiftReporsitory.countShiftByBusinessIdAndSerialAndOpenShift(
+                        objTerminal.getBusiness().getBusinessId(),
+                        objTerminal.getSerial(),
+                        true);
+
+                if (contShift > 0) {
+                    throw new DataInconsistencyException("No se puede liberal el terminal, tiene turnos abiertos");
                 }
 
+                objTerminal.setSerial(null);
+                this.serviceDBTerminal.save(objTerminal);
+                bandera = true;
             }
         }
         return bandera;

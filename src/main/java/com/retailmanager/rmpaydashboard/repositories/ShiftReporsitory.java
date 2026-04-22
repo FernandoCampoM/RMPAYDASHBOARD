@@ -22,6 +22,9 @@ import java.util.Optional;
 
 public interface ShiftReporsitory extends CrudRepository<Shift, String>, PagingAndSortingRepository<Shift, String> {
 
+    @Query(value = "select count(*) from RMPAY.dbo.Shift s join RMPAY.dbo.Terminal t on s.terminalId = t.terminalId where t.businessId = :businessId and t.serial = :serial and s.openShifBalance = :openShiftBalance", nativeQuery = true)
+    int countShiftByBusinessIdAndSerialAndOpenShift(Long businessId, String serial, boolean openShiftBalance);
+
     @Query(value = "select   " +
             "  ISNULL(SUM(CASE   " +
             "        WHEN paymentType = 'ATH'  " +
