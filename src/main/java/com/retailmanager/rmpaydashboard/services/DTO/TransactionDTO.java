@@ -49,6 +49,8 @@ public class TransactionDTO {
  private Integer remoto;
 
  private SaleDTO infoSale;
+
+ private Double cashRounding;
     
 public Transactions toTransactions(){
     Transactions transaction = new Transactions();
@@ -66,6 +68,7 @@ public Transactions toTransactions(){
     transaction.setRefId(this.refId);
     transaction.setState(this.state);
     transaction.setRemoto(this.remoto);
+    transaction.setCashRounding(this.cashRounding);
     return transaction;
 }
 public static TransactionDTO fromTransactions(Transactions transaction){
@@ -85,6 +88,7 @@ public static TransactionDTO fromTransactions(Transactions transaction){
     transactionDTO.setState(transaction.getState());
     transactionDTO.setSaleId(transaction.getSale().getSaleID());
     transactionDTO.setRemoto(transaction.getRemoto());
+    transactionDTO.setCashRounding(transaction.getCashRounding());
     return transactionDTO;
 }
     // Constructor, getters y setters
