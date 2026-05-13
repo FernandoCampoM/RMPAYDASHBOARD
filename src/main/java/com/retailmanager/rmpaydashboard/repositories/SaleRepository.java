@@ -76,23 +76,23 @@ public interface SaleRepository extends CrudRepository<Sale, String> {
      */
     @Query(value = " SELECT \r\n" +
             "  (SELECT sum(saleTotalAmount) \r\n" +
-            "  FROM [RMPAY].[dbo].[Sale] where CAST(saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId ) as totalSales,\r\n" +
+            "  FROM [RMPAY].[dbo].[Sale] where saleEndDate BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId ) as totalSales,\r\n" +
             "  \r\n" +
             "  (SELECT sum(s2.saleTotalAmount) \r\n" +
-            "  FROM [RMPAY].[dbo].[Sale] s1 JOIN [RMPAY].[dbo].[Sale] s2 ON s1.saleID = s2.saleToRefund WHERE CAST(s1.saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND s1.businessId = :businessId )as totalRefund,\r\n" +
+            "  FROM [RMPAY].[dbo].[Sale] s1 JOIN [RMPAY].[dbo].[Sale] s2 ON s1.saleID = s2.saleToRefund WHERE s1.saleEndDate BETWEEN :startDate AND :endDate AND s1.businessId = :businessId )as totalRefund,\r\n" +
             "\r\n" +
             "  (SELECT sum(saleStateTaxAmount)\r\n" +
-            "  FROM [RMPAY].[dbo].[Sale] where CAST(saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId ) as stateTax,\r\n" +
+            "  FROM [RMPAY].[dbo].[Sale] where saleEndDate BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId ) as stateTax,\r\n" +
             "\r\n" +
             "  (SELECT sum(saleCityTaxAmount) \r\n" +
-            "  FROM [RMPAY].[dbo].[Sale] where CAST(saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId )  as cityTax,\r\n" +
+            "  FROM [RMPAY].[dbo].[Sale] where saleEndDate BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId )  as cityTax,\r\n" +
             "\r\n" +
             "  (SELECT sum(saleReduceTax) \r\n" +
-            "  FROM [RMPAY].[dbo].[Sale] where CAST(saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId  ) as redTax, " +
+            "  FROM [RMPAY].[dbo].[Sale] where saleEndDate BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId  ) as redTax, " +
             " (SELECT sum(saleSubtotal) " +
-            "  FROM [RMPAY].[dbo].[Sale] where CAST(saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId  ) as subTotalSales, " +
-            " (SELECT  SUM(it.grossProfit) AS profit FROM [RMPAY].[dbo].[ItemForSale] it JOIN [RMPAY].[dbo].[Sale] s ON it.saleID = s.saleID WHERE CAST(s.saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' AND s.businessId = :businessId) as  grossBenefit, " +
-            " (SELECT  SUM(s.tipAmount) from [RMPAY].[dbo].[Sale] s  WHERE CAST(s.saleEndDate AS DATE) BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' AND s.businessId = :businessId) as totalTips ", nativeQuery = true)
+            "  FROM [RMPAY].[dbo].[Sale] where saleEndDate BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId  ) as subTotalSales, " +
+            " (SELECT  SUM(it.grossProfit) AS profit FROM [RMPAY].[dbo].[ItemForSale] it JOIN [RMPAY].[dbo].[Sale] s ON it.saleID = s.saleID WHERE s.saleEndDate BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' AND s.businessId = :businessId) as  grossBenefit, " +
+            " (SELECT  SUM(s.tipAmount) from [RMPAY].[dbo].[Sale] s  WHERE s.saleEndDate BETWEEN :startDate AND :endDate AND saleTransactionType='SALE'AND saleStatus='SUCCEED' AND s.businessId = :businessId) as totalTips ", nativeQuery = true)
     public Object[] dailySummary(Long businessId, Instant startDate, Instant endDate);
 
 
