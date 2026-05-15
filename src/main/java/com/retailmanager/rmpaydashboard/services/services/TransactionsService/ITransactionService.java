@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.services.services.TransactionsService;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,4 +17,11 @@ public interface ITransactionService {
     public ResponseEntity<?> getTransactionsByMerchantId(String merchantId, String terminalId, LocalDateTime startDate, LocalDateTime endDate);
     public ResponseEntity<?> getTransactionsByBusinessId(Long businessId, LocalDateTime startDate, LocalDateTime endDate);
     public ResponseEntity<?> getTransactionById(String id);
+    public ResponseEntity<?> getTransactionDetails(
+        Long businessId,
+        Instant startDate,
+        Instant endDate);
+    public ResponseEntity<?> getTransactionDetailsByShifts(
+        Long userBusinessId,
+        String shiftId);
 }

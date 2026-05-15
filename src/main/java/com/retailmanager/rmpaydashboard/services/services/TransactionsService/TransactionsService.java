@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.services.services.TransactionsService;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +23,8 @@ import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.SaleRepository;
 import com.retailmanager.rmpaydashboard.repositories.TransactionsRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.TransactionDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.ShiftTransactionDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.TransactionDetailDTO;
 
 @Service
 public class TransactionsService implements ITransactionService {
@@ -207,5 +210,54 @@ public class TransactionsService implements ITransactionService {
         TransactionDTO transactionDTOrta=TransactionDTO.fromTransactions(transaction);
         return new ResponseEntity<>(transactionDTOrta, HttpStatus.OK);
     }
-    
+    @Override
+    @Transactional(readOnly = true)
+public ResponseEntity<?> getTransactionDetails(
+        Long businessId,
+        Instant startDate,
+        Instant endDate) {
+
+    List<TransactionDetailDTO> response =
+            saleRepository.getTransactionDetails(
+                    businessId,
+                    startDate,
+                    endDate
+            )
+            .stream()
+            .map(item -> TransactionDetailDTO.builder()
+                    .saleCreationDate(Instant.parse(item.getSaleCreationDate()))
+                    .transactionNumber(item.getGlobalUId())
+                    .method(item.getPaymentType())
+                    .subtotal(item.getSaleSubtotal())
+                    .taxes(item.getTaxes())
+                    .total(item.getSaleTotalAmount())
+                    .build())
+            .toList();
+
+    return new ResponseEntity<>(response, HttpStatus.OK);
+}
+
+@Override    
+@Transactional(readOnly = true)
+    public ResponseEntity<?> getTransactionDetailsByShifts(
+        Long userBusinessId,
+        String shiftId){
+            List<ShiftTransactionDTO> response =
+            saleRepository.getShiftTransactions(
+                    shiftId,
+                    userBusinessId
+            )
+            .stream()
+            .map(item -> ShiftTransactionDTO.builder()
+                    .shiftId(item.getShiftId())
+                    .userBusinessId(item.getUserBusinessId())
+                    .globalUId(item.getGlobalUId())
+                    .amount(item.getAmount())
+                    .transactionDate(Instant.parse(item.getTransactionDate()))
+                    .terminalId(item.getTerminalId())
+                    .build())
+            .toList();
+
+    return new ResponseEntity<>(response, HttpStatus.OK);
+        }
 }

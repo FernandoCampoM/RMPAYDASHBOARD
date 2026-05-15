@@ -7,15 +7,22 @@ import com.retailmanager.rmpaydashboard.models.ItemForSale;
 import com.retailmanager.rmpaydashboard.models.Product;
 import com.retailmanager.rmpaydashboard.models.Sale;
 import com.retailmanager.rmpaydashboard.models.Transactions;
+import com.retailmanager.rmpaydashboard.models.Interface.LaborMetricsProjection;
+import com.retailmanager.rmpaydashboard.models.enums.KPIStatus;
+import com.retailmanager.rmpaydashboard.repositories.BusinessConfigurationRepository;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
+import com.retailmanager.rmpaydashboard.repositories.DashboardKpiProjection;
 import com.retailmanager.rmpaydashboard.repositories.EntryExitRepository;
 import com.retailmanager.rmpaydashboard.repositories.ProductRepository;
 import com.retailmanager.rmpaydashboard.repositories.SaleRepository;
 import com.retailmanager.rmpaydashboard.repositories.TransactionsRepository;
 import com.retailmanager.rmpaydashboard.repositories.UsersAppRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.EntryExitDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.HourlySalesDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ProductDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySalesDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySummaryDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DashboardKpiDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.EarningsReportDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.TipsReportDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TransactionDTO;
@@ -51,6 +58,8 @@ public class ReportService implements IReportService {
     private ModelMapper mapper;
     @Autowired
     private BusinessRepository serviceDBBusiness;
+    @Autowired
+    private BusinessConfigurationRepository serviceDBBusinessConfiguration;
     @Autowired
     private ProductRepository serviceDBProduct;
     @Autowired
@@ -1005,5 +1014,253 @@ public class ReportService implements IReportService {
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+    @Override
+    public ResponseEntity<?> getDashboardKpis(Long businessId) {
+        Integer workingHours=Integer.parseInt(this.serviceDBBusinessConfiguration.findByKey("Report.workingHours", businessId).getValue());
+        DashboardKpiProjection projection =
+                serviceDBSale.getDashboardKpis(businessId);
+        LaborMetricsProjection labor =
+        serviceDBSale.getLaborMetrics(businessId);
+        List<HourlySalesDTO> hourlySales =
+            serviceDBSale.getHourlySales(businessId)
+                    .stream()
+                    .map(item -> HourlySalesDTO.builder()
+                            .hour(item.getHour())
+                            .transactions(item.getTransactions())
+                            .sales(item.getSales())
+                            .build())
+                    .toList();
+        Double totalHourlySales = hourlySales.stream().mapToDouble(HourlySalesDTO::getSales).sum();            
+        Double salesYoY=projection.getSalesYTD() != null && projection.getSalesLY() != null && projection.getSalesLY() != 0 ? ((projection.getSalesYTD() - projection.getSalesLY()) / projection.getSalesLY()) * 100 : 0;
+        Double marginPercentYTD = projection.getProfitYTD() != null && projection.getSalesYTD() != null && projection.getSalesYTD() != 0 ? (projection.getProfitYTD() / projection.getSalesYTD()) * 100 : 0;
+        Double marginPercentLY = projection.getProfitLY() != null && projection.getSalesLY() != null && projection.getSalesLY() != 0 ? (projection.getProfitLY() / projection.getSalesLY()) * 100 : 0;
+        Double marginPercentYoY = marginPercentLY != null && marginPercentLY != 0 ? ((marginPercentYTD - marginPercentLY) / marginPercentLY) * 100 : 0;
+        Double currentCostPerHour =
+        labor.getLaborHoursYTD() != null
+        && labor.getLaborHoursYTD() != 0
+        ? labor.getLaborCostYTD() / labor.getLaborHoursYTD()
+        : 0;
+        Double lastYearCostPerHour =
+        labor.getLaborHoursLY() != null
+        && labor.getLaborHoursLY() != 0
+        ? labor.getLaborCostLY() / labor.getLaborHoursLY()
+        : 0;
+        Double costPerHourYoY =
+        lastYearCostPerHour != null
+        && lastYearCostPerHour != 0
+        ? ((currentCostPerHour - lastYearCostPerHour)
+            / lastYearCostPerHour) * 100
+        : 0;
+        Double avgTikectYoY = projection.getAvgTicketYTD() != null && projection.getAvgTicketLY() != null && projection.getAvgTicketLY() != 0 ? ((projection.getAvgTicketYTD() - projection.getAvgTicketLY()) / projection.getAvgTicketLY()) * 100 : 0;
+        Double efficiency = projection.getTodaySales() != null && workingHours != null && workingHours != 0 ? projection.getTodaySales() / workingHours : 0;
+        Double dailyGrowth = projection.getTodaySales() != null && projection.getYesterdaySales() != null && projection.getYesterdaySales() != 0 ? ((projection.getTodaySales() - projection.getYesterdaySales()) / projection.getYesterdaySales()) * 100 : 0;
+        Double salesYesterdayVsPreviousDay = projection.getYesterdaySales() != null && projection.getTwoDaysAgoSales() != null && projection.getTwoDaysAgoSales() != 0 ? ((projection.getYesterdaySales() - projection.getTwoDaysAgoSales()) / projection.getTwoDaysAgoSales()) * 100 : 0;
+        Double salesWoW= projection.getThisWeekSales() != null && projection.getLastWeekSalesUntilToday() != null && projection.getLastWeekSalesUntilToday() != 0 ? ((projection.getThisWeekSales() - projection.getLastWeekSalesUntilToday()) / projection.getLastWeekSalesUntilToday()) * 100 : 0;
+        Double taxesGrowth = projection.getTodayTaxes() != null && projection.getYesterdayTaxes() != null && projection.getYesterdayTaxes() != 0 ? ((projection.getTodayTaxes() - projection.getYesterdayTaxes()) / projection.getYesterdayTaxes()) * 100 : 0;
+        Double taxesYesterdayVsPreviousDay = projection.getYesterdayTaxes() != null && projection.getTwoDaysAgoTaxes() != null && projection.getTwoDaysAgoTaxes() != 0 ? ((projection.getYesterdayTaxes() - projection.getTwoDaysAgoTaxes()) / projection.getTwoDaysAgoTaxes()) * 100 : 0;
+        Double taxesWoW = projection.getThisWeekTaxes() != null && projection.getLastWeekTaxesUntilToday() != null && projection.getLastWeekTaxesUntilToday() != 0 ? ((projection.getThisWeekTaxes() - projection.getLastWeekTaxesUntilToday()) / projection.getLastWeekTaxesUntilToday()) * 100 : 0;
+        Double profitGrowth = projection.getTodayProfit() != null && projection.getYesterdayProfit() != null && projection.getYesterdayProfit() != 0 ? ((projection.getTodayProfit() - projection.getYesterdayProfit()) / projection.getYesterdayProfit()) * 100 : 0;
+        Double profitYesterdayVsPreviousDay = projection.getYesterdayProfit() != null && projection.getTwoDaysAgoProfit() != null && projection.getTwoDaysAgoProfit() != 0 ? ((projection.getYesterdayProfit() - projection.getTwoDaysAgoProfit()) / projection.getTwoDaysAgoProfit()) * 100 : 0;
+        Double profitWoW = projection.getThisWeekProfit() != null && projection.getLastWeekProfitUntilToday() != null && projection.getLastWeekProfitUntilToday() != 0 ? ((projection.getThisWeekProfit() - projection.getLastWeekProfitUntilToday()) / projection.getLastWeekProfitUntilToday()) * 100 : 0;
+        List<DailySalesDTO> dailySales = serviceDBSale.getDailySalesCurrentMonth(businessId).stream().map(sale -> DailySalesDTO.builder()
+                .dayOfMonth(sale.getDayOfMonth())
+                .transactions(sale.getTransactions())
+                .sales(sale.getSales())
+                .build()).collect(Collectors.toList());
+        List<DailySalesDTO> previousDailySales = serviceDBSale.getDailySalesLastMonthUntilToday(businessId).stream().map(sale -> DailySalesDTO.builder()
+                .dayOfMonth(sale.getDayOfMonth())
+                .transactions(sale.getTransactions())
+                .sales(sale.getSales())
+                .build()).collect(Collectors.toList());
+        DashboardKpiDTO response = DashboardKpiDTO.builder()
+                .salesYTD(projection.getSalesYTD())
+                .salesLY(projection.getSalesLY())
+                .profitYTD(projection.getProfitYTD())
+                .profitLY(projection.getProfitLY())
+                .profitYoY(projection.getProfitYTD() != null && projection.getProfitLY() != null && projection.getProfitLY() != 0 ? ((projection.getProfitYTD() - projection.getProfitLY()) / projection.getProfitLY()) * 100 : 0)
+                .avgTicketYTD(projection.getAvgTicketYTD())
+                .avgTicketLY(projection.getAvgTicketLY())
+                .avgTicketYoY(avgTikectYoY)
+                .todaySales(projection.getTodaySales())
+                .yesterdaySales(projection.getYesterdaySales())
+                .salesYesterdayVsPreviousDay(salesYesterdayVsPreviousDay)
+                .salesYesterdayVsPreviousDayStatus(calculateSalesStatus(salesYesterdayVsPreviousDay).name())
+                .salesWoW(salesWoW)
+                .salesWoWStatus(calculateSalesStatus(salesWoW).name())
+                .todayTaxes(projection.getTodayTaxes())
+                .yesterdayTaxes(projection.getYesterdayTaxes())
+                .taxesYesterdayVsPreviousDay(taxesYesterdayVsPreviousDay)
+                .taxesYesterdayVsPreviousDayStatus(calculateTaxesStatus(taxesYesterdayVsPreviousDay).name())
+                .taxesWoW(taxesWoW)
+                .taxesWoWStatus(calculateTaxesStatus(taxesWoW).name())
+                .taxesYTD(projection.getTaxesYTD())
+                .todayProfit(projection.getTodayProfit())
+                .yesterdayProfit(projection.getYesterdayProfit())
+                .profitYesterdayVsPreviousDay(profitYesterdayVsPreviousDay)
+                .profitYesterdayVsPreviousDayStatus(calculateProfitStatus(profitYesterdayVsPreviousDay).name())
+                .profitWoW(profitWoW)
+                .profitWoWStatus(calculateProfitStatus(profitWoW).name())
+                .profitGrowthPercent(profitGrowth)
+                .profitGrowthPercentStatus(calculateProfitStatus(profitGrowth).name())
+                .todayTransactions(projection.getTodayTransactions())
+                .transactionsYTD(projection.getTransactionsYTD())
+                .laborCostYTD(labor.getLaborCostYTD())
+                .laborHoursYTD(labor.getLaborHoursYTD())
+                .laborCostLY(labor.getLaborCostLY())
+                .laborHoursLY(labor.getLaborHoursLY())
+                .hourlySales(hourlySales)
+                .salesYoY(salesYoY  )
+                .marginPercentYTD(marginPercentYTD)
+                .marginPercentLY(marginPercentLY)
+                .marginPercentYoY(marginPercentYoY)
+                .todayMarginPercent((projection.getTodayProfit() != null && projection.getTodaySales() != null && projection.getTodaySales() != 0) ? (projection.getTodayProfit() / projection.getTodaySales()) * 100 : 0)
+                .costPerHourYoY(costPerHourYoY)
+                .avgSalesPerHour(projection.getTodaySales()/workingHours)
+                .avgTransactionsPerHour(projection.getTodayTransactions() != null && workingHours != null && workingHours != 0 ? (double) projection.getTodayTransactions() / workingHours : 0)
+                .dailyGrowthPercent(dailyGrowth)
+                .dailyGrowthPercentStatus(calculateDailyStatus(dailyGrowth).name())
+                .taxesGrowthPercent(taxesGrowth)
+                .taxesGrowthPercentStatus(calculateTaxesStatus(taxesGrowth).name())
+                .salesStatus(calculateSalesStatus(salesYoY).name())
+                .marginStatus(calculateMarginStatus(marginPercentYoY).name()) //TODO: AJUSTAR LOS VALORES DE LOS KPI DEL SEMAPHORE
+                .laborStatus(calculateLaborStatus(costPerHourYoY).name())   
+                .avgTicketStatus(calculateAvgTicketStatus(avgTikectYoY).name())
+                .efficiency(efficiency)
+                .dailySales(dailySales)
+                .previousDailySales(previousDailySales)
+                .build();
 
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+    private KPIStatus calculateProfitStatus(Double profitGrowth) {
+
+    if (profitGrowth == null) {
+        return KPIStatus.RED;
+    }
+
+    // >= +2%
+    if (profitGrowth >= 2) {
+        return KPIStatus.GREEN;
+    }
+
+    // entre -2% y +2%
+    if (profitGrowth >= -2 && profitGrowth < 2) {
+        return KPIStatus.YELLOW;
+    }
+
+    // < -2%
+    return KPIStatus.RED;
+}
+    private KPIStatus calculateTaxesStatus(Double taxesGrowth) {
+
+    if (taxesGrowth == null) {
+        return KPIStatus.RED;
+    }
+
+    // >= +2%
+    if (taxesGrowth >= 2) {
+        return KPIStatus.GREEN;
+    }
+
+    // entre -2% y +2%
+    if (taxesGrowth >= -2 && taxesGrowth < 2) {
+        return KPIStatus.YELLOW;
+    }
+
+    // < -2%
+    return KPIStatus.RED;
+}
+    private KPIStatus calculateDailyStatus(Double dailyGrowth) {
+
+    if (dailyGrowth == null) {
+        return KPIStatus.RED;
+    }
+
+    // >= +2%
+    if (dailyGrowth >= 2) {
+        return KPIStatus.GREEN;
+    }
+
+    // entre -2% y +2%
+    if (dailyGrowth >= -2 && dailyGrowth < 2) {
+        return KPIStatus.YELLOW;
+    }
+
+    // < -2%
+    return KPIStatus.RED;
+}
+    private KPIStatus calculateSalesStatus(Double salesYoY) {
+
+    if (salesYoY == null) {
+        return KPIStatus.RED;
+    }
+
+    if (salesYoY >= 2) {
+        return KPIStatus.GREEN;
+    }
+
+    if (salesYoY >= -5) {
+        return KPIStatus.YELLOW;
+    }
+
+    return KPIStatus.RED;
+}
+
+private KPIStatus calculateMarginStatus(Double marginPercentYoY) {
+
+    if (marginPercentYoY == null) {
+        return KPIStatus.RED;
+    }
+
+    // VERDE >= +0.3 pts
+    if (marginPercentYoY >= 0.3) {
+        return KPIStatus.GREEN;
+    }
+
+    // AMARILLO entre -0.5 y +0.3
+    if (marginPercentYoY > -0.5) {
+        return KPIStatus.YELLOW;
+    }
+
+    // ROJO <= -0.5
+    return KPIStatus.RED;
+}
+
+private KPIStatus calculateLaborStatus(Double costPerHourYoY) {
+
+    if (costPerHourYoY == null) {
+        return KPIStatus.RED;
+    }
+
+    // BAJAR COSTO = BUENO
+
+    if (costPerHourYoY <= -2) {
+        return KPIStatus.GREEN;
+    }
+
+    if (costPerHourYoY < 5) {
+        return KPIStatus.YELLOW;
+    }
+
+    return KPIStatus.RED;
+}
+private KPIStatus calculateAvgTicketStatus(Double avgTicketYoy) {
+
+    if (avgTicketYoy == null) {
+        return KPIStatus.RED;
+    }
+
+    // >= +2%
+    if (avgTicketYoy >= 2) {
+        return KPIStatus.GREEN;
+    }
+
+    // entre -2% y +2%
+    if (avgTicketYoy > -2 && avgTicketYoy < 2) {
+        return KPIStatus.YELLOW;
+    }
+
+    // <= -2%
+    return KPIStatus.RED;
+}
 }

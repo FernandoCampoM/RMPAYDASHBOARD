@@ -2,6 +2,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "RmpaydashboardApplication",
+            "request": "launch",
+            "mainClass": "com.retailmanager.rmpaydashboard.RmpaydashboardApplication",
+            "projectName": "rmpayservice"
+        },
+        {
+            "type": "java",
             "name": "Utils",
             "request": "launch",
             "mainClass": "com.retailmanager.rmpaydashboard.utils.Utils",

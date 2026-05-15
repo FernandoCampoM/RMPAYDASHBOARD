@@ -3,6 +3,12 @@ package com.retailmanager.rmpaydashboard.repositories;
 import com.retailmanager.rmpaydashboard.models.Business;
 import com.retailmanager.rmpaydashboard.models.ItemForSale;
 import com.retailmanager.rmpaydashboard.models.Sale;
+import com.retailmanager.rmpaydashboard.models.Interface.DailySalesProjection;
+import com.retailmanager.rmpaydashboard.models.Interface.HourlySalesProjection;
+import com.retailmanager.rmpaydashboard.models.Interface.LaborMetricsProjection;
+import com.retailmanager.rmpaydashboard.models.Interface.ShiftTransactionProjection;
+import com.retailmanager.rmpaydashboard.models.Interface.TransactionDetailProjection;
+
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 
@@ -288,6 +294,491 @@ public interface SaleRepository extends CrudRepository<Sale, String> {
             "  where s.saleEndDate >= :startDate and s.saleEndDate < :endDate and s.businessId= :businessId " + //
             "  group by s.userId, ub.username", nativeQuery = true)
     Object[] getUserTipsReport(Long businessId, Instant startDate, Instant endDate);
+
+
+     @Query(value = """
+
+        WITH SalesBase AS (
+            SELECT *
+            FROM Sale
+            WHERE businessId = :businessId
+              AND saleStatus IN ('SUCCEED','PARTIAL_REFUNDED')
+              AND saleTransactionType = 'SALE'
+        ),
+
+        ProfitBase AS (
+            SELECT
+                s.saleId,
+                SUM(
+                    TRY_CAST(JSON_VALUE(item.value,'$.grossProfit') AS FLOAT)
+                    *
+                    TRY_CAST(JSON_VALUE(item.value,'$.quantity') AS FLOAT)
+                ) AS Profit
+            FROM Sale s
+            CROSS APPLY OPENJSON(s.saleItems) item
+            WHERE s.businessId = :businessId
+            GROUP BY s.saleId
+        )
+
+        SELECT
+
+        -- SALES YTD
+        ISNULL(SUM(CASE
+            WHEN s.saleCreationDate >= DATEFROMPARTS(YEAR(GETDATE()),1,1)
+            THEN s.saleTotalAmount
+        END),0) AS salesYTD,
+
+        -- SALES LY
+        ISNULL(SUM(CASE
+            WHEN s.saleCreationDate >= DATEFROMPARTS(YEAR(GETDATE())-1,1,1)
+             AND s.saleCreationDate < DATEADD(YEAR,-1,GETDATE())
+            THEN s.saleTotalAmount
+        END),0) AS salesLY,
+
+        -- PROFIT YTD
+        ISNULL(SUM(CASE
+            WHEN s.saleCreationDate >= DATEFROMPARTS(YEAR(GETDATE()),1,1)
+            THEN p.Profit
+        END),0) AS profitYTD,
+
+        -- PROFIT LY
+       ISNULL(
+    SUM(
+        CASE
+            WHEN s.saleCreationDate >= DATEFROMPARTS(YEAR(GETDATE())-1,1,1)
+             AND s.saleCreationDate < DATEADD(YEAR,-1,GETDATE())
+            THEN p.Profit
+        END
+    ),0
+) AS profitLY,
+
+        -- AVG TICKET
+        ISNULL(AVG(CASE
+            WHEN s.saleCreationDate >= DATEFROMPARTS(YEAR(GETDATE()),1,1)
+            THEN s.saleTotalAmount
+        END),0) AS avgTicketYTD,
+
+        -- LAST YEAR AVG TICKET
+        ISNULL(
+    AVG(
+        CASE
+            WHEN s.saleCreationDate >= DATEFROMPARTS(YEAR(GETDATE()) - 1,1,1)
+             AND s.saleCreationDate < DATEADD(YEAR,-1,GETDATE())
+            THEN s.saleTotalAmount
+        END
+    ),0
+) AS avgTicketLY,
+
+        -- TODAY SALES
+        ISNULL(SUM(CASE
+            WHEN CAST(s.saleCreationDate AS DATE)=CAST(GETDATE() AS DATE)
+            THEN s.saleTotalAmount
+        END),0) AS todaySales,
+
+        -- YESTERDAY SALES
+        ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         = CAST(DATEADD(DAY,-1,GETDATE()) AS DATE)
+    THEN s.saleTotalAmount
+END),0) AS yesterdaySales,
+
+-- SALES TWO DAYS AGO
+ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         = CAST(DATEADD(DAY,-2,GETDATE()) AS DATE)
+    THEN s.saleTotalAmount
+END),0) AS twoDaysAgoSales,
+
+-- THIS WEEK SALES (Monday -> TODAY)
+ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         >= DATEADD(DAY, 2 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE))
+    THEN s.saleTotalAmount
+END),0) AS thisWeekSales,
+
+-- LAST WEEK SALES UNTIL SAME DAY AS TODAY
+ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         >= DATEADD(
+                WEEK,
+                -1,
+                DATEADD(
+                    DAY,
+                    2 - DATEPART(WEEKDAY, GETDATE()),
+                    CAST(GETDATE() AS DATE)
+                )
+            )
+
+     AND CAST(s.saleCreationDate AS DATE)
+         < DATEADD(
+                DAY,
+                1,
+                DATEADD(
+                    WEEK,
+                    -1,
+                    CAST(GETDATE() AS DATE)
+                )
+            )
+
+    THEN s.saleTotalAmount
+END),0) AS lastWeekSalesUntilToday,
+
+        -- TODAY TAXES
+        ISNULL(SUM(CASE
+            WHEN CAST(s.saleCreationDate AS DATE)=CAST(GETDATE() AS DATE)
+            THEN ISNULL(s.saleCityTaxAmount,0)
+               + ISNULL(s.saleStateTaxAmount,0)
+        END),0) AS todayTaxes,
+
+        -- YESTERDAY TAXES
+        ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         = CAST(DATEADD(DAY,-1,GETDATE()) AS DATE)
+    THEN ISNULL(s.saleCityTaxAmount,0)
+       + ISNULL(s.saleStateTaxAmount,0)
+END),0) AS yesterdayTaxes,
+
+ -- Two Days Ago TAXES
+        ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         = CAST(DATEADD(DAY,-2,GETDATE()) AS DATE)
+    THEN ISNULL(s.saleCityTaxAmount,0)
+       + ISNULL(s.saleStateTaxAmount,0)
+END),0) AS twoDaysAgoTaxes,
+
+-- THIS WEEK TAXES (MONDAY -> TODAY)
+ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         >= DATEADD(
+                DAY,
+                2 - DATEPART(WEEKDAY, GETDATE()),
+                CAST(GETDATE() AS DATE)
+            )
+    THEN ISNULL(s.saleCityTaxAmount,0)
+       + ISNULL(s.saleStateTaxAmount,0)
+END),0) AS thisWeekTaxes,
+
+-- LAST WEEK TAXES UNTIL SAME DAY AS TODAY
+ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         >= DATEADD(
+                WEEK,
+                -1,
+                DATEADD(
+                    DAY,
+                    2 - DATEPART(WEEKDAY, GETDATE()),
+                    CAST(GETDATE() AS DATE)
+                )
+            )
+
+     AND CAST(s.saleCreationDate AS DATE)
+         < DATEADD(
+                DAY,
+                1,
+                DATEADD(
+                    WEEK,
+                    -1,
+                    CAST(GETDATE() AS DATE)
+                )
+            )
+
+    THEN ISNULL(s.saleCityTaxAmount,0)
+       + ISNULL(s.saleStateTaxAmount,0)
+END),0) AS lastWeekTaxesUntilToday,
+
+        -- TODAY PROFIT
+        ISNULL(SUM(CASE
+            WHEN CAST(s.saleCreationDate AS DATE)=CAST(GETDATE() AS DATE)
+            THEN p.Profit
+        END),0) AS todayProfit,
+        -- YESTERDAY PROFIT
+ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         = CAST(DATEADD(DAY,-1,GETDATE()) AS DATE)
+    THEN p.Profit
+END),0) AS yesterdayProfit,
+
+-- TWO DAYS AGO PROFIT
+ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         = CAST(DATEADD(DAY,-2,GETDATE()) AS DATE)
+    THEN p.Profit
+END),0) AS twoDaysAgoProfit,
+
+-- THIS WEEK PROFIT (Monday -> TODAY)
+ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         >= DATEADD(
+                DAY,
+                2 - DATEPART(WEEKDAY, GETDATE()),
+                CAST(GETDATE() AS DATE)
+            )
+    THEN p.Profit
+END),0) AS thisWeekProfit,
+
+-- LAST WEEK PROFIT UNTIL SAME DAY AS TODAY
+ISNULL(SUM(CASE
+    WHEN CAST(s.saleCreationDate AS DATE)
+         >= DATEADD(
+                WEEK,
+                -1,
+                DATEADD(
+                    DAY,
+                    2 - DATEPART(WEEKDAY, GETDATE()),
+                    CAST(GETDATE() AS DATE)
+                )
+            )
+
+     AND CAST(s.saleCreationDate AS DATE)
+         < DATEADD(
+                DAY,
+                1,
+                DATEADD(
+                    WEEK,
+                    -1,
+                    CAST(GETDATE() AS DATE)
+                )
+            )
+
+    THEN p.Profit
+END),0) AS lastWeekProfitUntilToday,
+
+        -- TODAY TX
+        ISNULL(SUM(CASE
+            WHEN CAST(s.saleCreationDate AS DATE)=CAST(GETDATE() AS DATE)
+            THEN 1
+        END),0) AS todayTransactions,
+        COUNT(
+        CASE
+                WHEN s.saleCreationDate >= DATEFROMPARTS(YEAR(GETDATE()),1,1)
+                AND s.saleCreationDate < DATEFROMPARTS(YEAR(GETDATE()) + 1,1,1)
+                THEN 1
+        END
+        ) AS transactionsYTD,
+        -- Taxes YTD
+         SUM(
+    CASE
+        WHEN s.saleCreationDate >= DATEFROMPARTS(YEAR(GETDATE()),1,1)
+         AND s.saleCreationDate < DATEFROMPARTS(YEAR(GETDATE()) + 1,1,1)
+        THEN ISNULL(s.saleCityTaxAmount,0)
+           + ISNULL(s.saleStateTaxAmount,0)
+        ELSE 0
+    END
+) AS taxesYTD
+
+        FROM SalesBase s
+        LEFT JOIN ProfitBase p
+            ON s.saleId = p.saleId
+
+        """, nativeQuery = true)
+    DashboardKpiProjection getDashboardKpis(Long businessId);
+
+    @Query(value = """
+
+    SELECT
+
+        -- CURRENT YEAR
+
+        ISNULL(SUM(CASE
+            WHEN date >= DATEFROMPARTS(YEAR(GETDATE()),1,1)
+            THEN totalWorkCost
+        END),0) AS laborCostYTD,
+
+        ISNULL(SUM(CASE
+            WHEN date >= DATEFROMPARTS(YEAR(GETDATE()),1,1)
+            THEN hoursWorked
+        END),0) AS laborHoursYTD,
+
+
+        -- LAST YEAR
+
+        ISNULL(SUM(CASE
+            WHEN date >= DATEFROMPARTS(YEAR(GETDATE())-1,1,1)
+             AND date < DATEADD(YEAR,-1,GETDATE())
+            THEN totalWorkCost
+        END),0) AS laborCostLY,
+
+        ISNULL(SUM(CASE
+            WHEN date >= DATEFROMPARTS(YEAR(GETDATE())-1,1,1)
+             AND date < DATEADD(YEAR,-1,GETDATE())
+            THEN hoursWorked
+        END),0) AS laborHoursLY
+
+    FROM EntryExit
+    WHERE userBusinessId IN (
+        SELECT userBusinessId
+        FROM UsersBusiness
+        WHERE businessId = :businessId
+    )
+
+    """, nativeQuery = true)
+LaborMetricsProjection getLaborMetrics(Long businessId);
+
+    @Query(value = """
+
+        SELECT
+    DATEPART(HOUR, saleCreationDate) AS hour,
+    COUNT(*) AS transactions,
+    ISNULL(SUM(saleTotalAmount),0) AS sales
+FROM Sale
+WHERE businessId = :businessId
+  AND saleStatus = 'SUCCEED'
+  AND CAST(saleCreationDate AS DATE)=CAST(GETDATE() AS DATE)
+GROUP BY DATEPART(HOUR, saleCreationDate)
+ORDER BY hour
+
+        """, nativeQuery = true)
+    List<HourlySalesProjection> getHourlySales(Long businessId);
+
+    @Query(value = """
+
+    SELECT
+    DAY(saleCreationDate) AS dayOfMonth,
+    COUNT(*) AS transactions,
+    ISNULL(SUM(saleTotalAmount),0) AS sales
+FROM Sale
+WHERE businessId = :businessId
+  AND saleStatus = 'SUCCEED'
+  AND saleCreationDate >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+  AND saleCreationDate < DATEADD(DAY,1,CAST(GETDATE() AS DATE))
+GROUP BY DAY(saleCreationDate)
+ORDER BY dayOfMonth
+
+    """, nativeQuery = true)
+List<DailySalesProjection> getDailySalesCurrentMonth(Long businessId);
+
+@Query(value = """
+
+    SELECT
+        DAY(saleCreationDate) AS dayOfMonth,
+        COUNT(*) AS transactions,
+        ISNULL(SUM(saleTotalAmount),0) AS sales
+    FROM Sale
+    WHERE businessId = :businessId
+      AND saleStatus = 'SUCCEED'
+
+      -- PRIMER DÍA DEL MES PASADO
+      AND saleCreationDate >= DATEFROMPARTS(
+            YEAR(DATEADD(MONTH,-1,GETDATE())),
+            MONTH(DATEADD(MONTH,-1,GETDATE())),
+            1
+      )
+
+      -- MISMO DÍA DEL MES ACTUAL PERO EN MES PASADO
+      AND saleCreationDate < DATEADD(
+            MONTH,
+            -1,
+            DATEADD(DAY,1,CAST(GETDATE() AS DATE))
+      )
+
+    GROUP BY DAY(saleCreationDate)
+    ORDER BY dayOfMonth
+
+    """, nativeQuery = true)
+List<DailySalesProjection> getDailySalesLastMonthUntilToday(Long businessId);
+
+@Query(value = """
+
+    SELECT
+
+          CONVERT(VARCHAR(33), s.saleCreationDate, 127) AS saleCreationDate,
+
+        t.globalUId AS globalUId,
+
+        t.paymentType AS paymentType,
+
+        ISNULL(s.saleSubtotal,0) AS saleSubtotal,
+
+        ISNULL(s.saleCityTaxAmount,0)
+        + ISNULL(s.saleStateTaxAmount,0) AS taxes,
+
+        ISNULL(s.saleTotalAmount,0) AS saleTotalAmount
+
+    FROM Transactions t
+    INNER JOIN Sale s
+        ON t.saleId = s.saleID
+
+    WHERE s.businessId = :businessId
+
+      AND s.saleStatus IN ('SUCCEED','PARTIAL_REFUNDED')
+
+      AND s.saleCreationDate >= :startDate
+
+      AND s.saleCreationDate < :endDate
+
+    ORDER BY s.saleCreationDate DESC
+
+    """, nativeQuery = true)
+List<TransactionDetailProjection> getTransactionDetails(
+        Long businessId,
+        Instant startDate,
+        Instant endDate
+);
+
+@Query(value = """
+
+    SELECT
+
+        sft.shiftId AS shiftId,
+
+        sft.userBusinessId AS userBusinessId,
+
+        sft.userName AS userName,
+
+        t.globalUId AS globalUId,
+
+        t.paymentType AS paymentType,
+
+        t.amount AS amount,
+
+        t.authCode AS authCode,
+
+        t.cardType AS cardType,
+
+        CONVERT(VARCHAR(33), t.date, 127) AS transactionDate,
+
+        s.saleID AS saleId,
+
+        ISNULL(s.saleSubtotal,0) AS saleSubtotal,
+
+        ISNULL(s.saleCityTaxAmount,0)
+        + ISNULL(s.saleStateTaxAmount,0) AS taxes,
+
+        ISNULL(s.saleTotalAmount,0) AS saleTotalAmount,
+
+        ISNULL(s.tipAmount,0) AS tipAmount,
+
+        s.saleStatus AS saleStatus,
+        s.terminalId AS terminalId
+
+    FROM Shift sft
+
+    INNER JOIN Sale s
+        ON s.userId = sft.userBusinessId
+
+    INNER JOIN Transactions t
+        ON t.saleId = s.saleID
+
+    WHERE sft.shiftId = :shiftId
+
+      AND sft.userBusinessId = :userBusinessId
+
+      AND t.date >= sft.startTime
+
+      AND (
+            sft.endTime IS NULL
+            OR t.date <= sft.endTime
+          )
+
+      AND s.saleStatus IN ('SUCCEED','PARTIAL_REFUNDED')
+
+    ORDER BY t.date DESC
+
+    """, nativeQuery = true)
+List<ShiftTransactionProjection> getShiftTransactions(
+        String shiftId,
+        Long userBusinessId
+);
 
 }
 

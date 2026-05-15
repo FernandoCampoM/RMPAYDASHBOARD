@@ -115,4 +115,11 @@ public class ReportsController {
                                        @RequestParam(name = "endDate") @Valid LocalDate endDate,@RequestParam(name = "userBusinessId",required = false) Long userBusinessId) {
         return reportService.getReportPonches(businessId, startDate, endDate, userBusinessId);
     }
+
+    @GetMapping("reports/dashboard/kpis/{businessId}")
+public ResponseEntity<?> getDashboardKpis(
+        @PathVariable Long businessId) {
+
+    return reportService.getDashboardKpis(businessId);
+}
 }
