@@ -1,36 +1,51 @@
-# Compiled class file
+# =========================
+# Java / Maven
+# =========================
+
+# Compiled files
 *.class
 
-# Log file
-*.log
+# Maven
+target/
 
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
+# Package files
 *.jar
 *.war
-*.nar
 *.ear
-*.zip
-*.tar.gz
-*.rar
+*.nar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# Logs
+*.log
+*.dumpstream
 hs_err_pid*
 replay_pid*
-target/surefire-reports/2025-02-25T14-21-05_267.dumpstream
-target/surefire-reports/2025-02-25T14-27-32_090.dumpstream
-target/surefire-reports/2025-02-25T14-36-13_822.dumpstream
-target/surefire-reports/2025-02-25T14-40-03_291.dumpstream
-target/surefire-reports/2025-02-27T19-27-41_463.dumpstream
-target/surefire-reports/2025-03-01T00-07-25_749.dumpstream
-target/surefire-reports/2025-03-01T00-20-15_055.dumpstream
-target/surefire-reports/2025-03-05T11-33-57_317.dumpstream
-*.dumpstream
-target/RMPAYservice.jar.original
-target/surefire-reports/com.retailmanager.rmpaydashboard.RmpaydashboardApplicationTests.txt
-target/surefire-reports/TEST-com.retailmanager.rmpaydashboard.RmpaydashboardApplicationTests.xml
+
+# =========================
+# IDEs
+# =========================
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# IntelliJ
+.idea/
+*.iml
+
+# VSCode
+.vscode/
+
+# =========================
+# OS files
+# =========================
+
+.DS_Store
+Thumbs.db
+
+# =========================
+# Temporary files
+# =========================
+
+*.tmp
+*.temp
