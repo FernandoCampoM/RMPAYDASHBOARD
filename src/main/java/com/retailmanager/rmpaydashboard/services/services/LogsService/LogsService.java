@@ -2,6 +2,7 @@ package com.retailmanager.rmpaydashboard.services.services.LogsService;
 
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadNoExisteException;
 import com.retailmanager.rmpaydashboard.factory.LogsFactory;
+import com.retailmanager.rmpaydashboard.models.Logs;
 import com.retailmanager.rmpaydashboard.repositories.LogsRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.LogsDTO;
@@ -10,6 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +40,44 @@ public class LogsService implements ILogsService {
         logs.setTerminal(terminal);
 
         logsRepository.save(logs);
+
+        return new ResponseEntity<>(true, HttpStatus.CREATED);
+    }
+
+    @Override
+    public ResponseEntity<?> add(List<LogsDTO> logsDTOList) {
+        if (logsDTOList == null || logsDTOList.isEmpty()) {
+
+            return new ResponseEntity<>(
+                    "La lista de logs está vacía",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        List<Logs> logsToSave = new ArrayList<>();
+
+        for (LogsDTO logsDTO : logsDTOList) {
+
+            if (logsDTO.getTerminalId() == null) {
+                continue;
+            }
+
+            var terminal = serviceDBTerminal
+                    .findById(logsDTO.getTerminalId())
+                    .orElse(null);
+
+            if (terminal == null) {
+                continue;
+            }
+
+            var logs = logsFactory.toEntity(logsDTO);
+
+            logs.setTerminal(terminal);
+
+            logsToSave.add(logs);
+        }
+
+        logsRepository.saveAll(logsToSave);
 
         return new ResponseEntity<>(true, HttpStatus.CREATED);
     }
