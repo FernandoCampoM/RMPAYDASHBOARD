@@ -45,7 +45,7 @@ public class BackgroundRoutines extends Thread{
                 backgroundRoutinesService.priorNotificaionEmail();
                 backgroundRoutinesService.lastDayNotificaionEmail();
                 backgroundRoutinesService.afterNotificaionEmail();
-                backgroundRoutinesService.automaticPayments();
+                //backgroundRoutinesService.automaticPayments();
                 //AQUI LAS RUTINAS
             }
         };

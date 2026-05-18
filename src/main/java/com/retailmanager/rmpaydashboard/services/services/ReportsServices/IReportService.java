@@ -38,5 +38,6 @@ public interface IReportService {
     public ResponseEntity<?> workHoursVsScheduleHours(Long businessId, LocalDate startDate, LocalDate endDate);
     public ResponseEntity<?> Report_UserWeeklySchedule(Long userBusinessId, LocalDate startDate, LocalDate endDate);
     public ResponseEntity<?> getEmployeeWeeklyScheduleDetail(Long businessId,Long userBusinessId, LocalDate startDate, LocalDate endDate);
-
+    ResponseEntity<?> getDashboardKpis(Long businessId);
+    
 }

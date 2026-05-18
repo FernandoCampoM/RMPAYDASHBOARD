@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -107,4 +108,28 @@ public class TransactionsController {
             @Valid @PathVariable @NotBlank(message = "El id no puede estar vacío") String id) {
         return transactionService.getTransactionById(id);
     }
+    @GetMapping("")
+public ResponseEntity<?> getTransactions(
+        @RequestParam @NotNull Long businessId,
+        @RequestParam @NotNull Instant startDate,
+        @RequestParam(required = false)  Instant endDate) {
+        if(endDate==null){
+            endDate=startDate.plusSeconds(86399); // Si no se proporciona endDate, se establece al final del día de startDate
+        }
+    return transactionService.getTransactionDetails(
+            businessId,
+            startDate,
+            endDate
+    );
+}
+    @GetMapping("/shifts")
+public ResponseEntity<?> getTransactionsByShift(
+        @RequestParam @NotNull Long userBusinessId,
+        @RequestParam @NotNull String shiftId) {
+        
+    return transactionService.getTransactionDetailsByShifts(
+            userBusinessId,
+            shiftId
+    );
+}
 }
