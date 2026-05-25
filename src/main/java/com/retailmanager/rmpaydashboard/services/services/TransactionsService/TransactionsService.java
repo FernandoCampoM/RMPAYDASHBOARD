@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.services.services.TransactionsService;
 
+import com.retailmanager.rmpaydashboard.controller.ShiftController;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -18,25 +19,36 @@ import org.springframework.transaction.annotation.Transactional;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadNoExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadYaExisteException;
 import com.retailmanager.rmpaydashboard.models.Sale;
+import com.retailmanager.rmpaydashboard.models.Shift;
 import com.retailmanager.rmpaydashboard.models.Transactions;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.SaleRepository;
+import com.retailmanager.rmpaydashboard.repositories.ShiftReporsitory;
 import com.retailmanager.rmpaydashboard.repositories.TransactionsRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.TransactionDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.ShiftReport;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.ShiftTransactionDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.TransactionDetailDTO;
 
 @Service
 public class TransactionsService implements ITransactionService {
+private final ShiftController shiftController;
 @Autowired
     private TransactionsRepository transactionsRepository;
     @Autowired
     private SaleRepository saleRepository;
     @Autowired
     private BusinessRepository businessRepository;
+
+
+    @Autowired
+    private ShiftReporsitory shiftRepository;
     @Autowired
     @Qualifier("mapperbase")
     private ModelMapper mapper;
+    TransactionsService(ShiftController shiftController) {
+        this.shiftController = shiftController;
+    }
         /**
          * Saves a transaction in the database.
          *
@@ -242,6 +254,13 @@ public ResponseEntity<?> getTransactionDetails(
     public ResponseEntity<?> getTransactionDetailsByShifts(
         Long userBusinessId,
         String shiftId){
+            if(shiftId==null || shiftId.isEmpty()){
+                throw new IllegalArgumentException("El shiftId no puede ser nulo o vacío");
+                
+            }
+            Shift shift = shiftRepository.findById(shiftId)
+            .orElseThrow(() -> new EntidadNoExisteException("Shift with ID " + shiftId + " does not exist."));
+            
             List<ShiftTransactionDTO> response =
             saleRepository.getShiftTransactions(
                     shiftId,
@@ -257,7 +276,15 @@ public ResponseEntity<?> getTransactionDetails(
                     .terminalId(item.getTerminalId())
                     .build())
             .toList();
-
-    return new ResponseEntity<>(response, HttpStatus.OK);
+            ShiftReport shiftReport = ShiftReport.builder()
+                    .employee(shift.getUserBusiness().getUserBusinessId().toString())
+                    .deviceId(shift.getTerminal().getTerminalId())
+                    .shiftStart(shift.getStartTime().toString())
+                    .shiftEnd(shift.getEndTime()==null? "Shift still open":shift.getEndTime().toString())
+                    .cuadre(shift.getBalanceFinal())
+                    .transactions(response)
+                    .numTransactions(response.size())
+                    .build();
+    return new ResponseEntity<>(shiftReport, HttpStatus.OK);
         }
 }
