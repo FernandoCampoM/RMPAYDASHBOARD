@@ -4,7 +4,6 @@ import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
@@ -896,14 +895,22 @@ public class BusinessService implements IBusinessService {
      */
     @Override
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getActivations(LocalDate starDate, LocalDate endDate) {
+    public ResponseEntity<?> getActivations(Instant starDate, Instant endDate) {
         HashMap<String, Object> result = new HashMap<>();
-       
+        
         List<Business> listBusiness = this.serviceDBBusiness.findAllByRegistrations(starDate, endDate);
         List<Terminal> listTerminal = this.serviceDBTerminal.findAllByActivations(starDate, endDate);
         //Activaciones y registraciones del mes anterior en el mismo rango de fechas
-        List<Business> lastMonthlistBusiness = this.serviceDBBusiness.findAllByRegistrations(starDate.minusMonths(1), endDate.minusMonths(1));
-        List<Terminal>  lastMonthlistTerminal = this.serviceDBTerminal.findAllByActivations(starDate.minusMonths(1), endDate.minusMonths(1)); 
+        Instant previousStartMonth = starDate
+        .atZone(ZoneId.systemDefault())
+        .minusMonths(1)
+        .toInstant();
+        Instant previousEndMonth = endDate
+        .atZone(ZoneId.systemDefault())
+        .minusMonths(1)
+        .toInstant();
+        List<Business> lastMonthlistBusiness = this.serviceDBBusiness.findAllByRegistrations(previousStartMonth, previousEndMonth);
+        List<Terminal>  lastMonthlistTerminal = this.serviceDBTerminal.findAllByActivations(previousStartMonth, previousEndMonth); 
         List<HashMap<String, Object>> listRegistraciones = new ArrayList<>();
         
         List<HashMap<String, Object>> listActivaciones = new ArrayList<>();

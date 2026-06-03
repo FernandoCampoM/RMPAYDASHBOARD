@@ -711,7 +711,7 @@ public class TerminalService implements ITerminalService {
             Optional<Business> optional = this.serviceDBBusiness.findById(businessId);
             if (optional.isPresent()) {
                 listTerminalDTO = this.mapper.map(
-                        this.serviceDBTerminal.findByBusinessAndExpirationDateLessThan(optional.get(), LocalDate.now()),
+                        this.serviceDBTerminal.findByBusinessAndExpirationDateLessThan(optional.get(), Instant.now()),
                         new TypeToken<List<TerminalDTO>>() {
                         }.getType());
                 return new ResponseEntity<List<TerminalDTO>>(listTerminalDTO, HttpStatus.OK);

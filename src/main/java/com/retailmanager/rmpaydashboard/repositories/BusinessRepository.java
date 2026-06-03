@@ -2,7 +2,7 @@ package com.retailmanager.rmpaydashboard.repositories;
 
 import com.retailmanager.rmpaydashboard.models.Business;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +25,6 @@ public interface BusinessRepository extends CrudRepository<Business,Long> {
     public Page<Business> findyAllClientsPageable(Pageable pageable);
 
     @Query("SELECT b FROM Business b WHERE b.registerDate BETWEEN :startDate AND :endDate")
-    List<Business> findAllByRegistrations(LocalDate startDate, LocalDate endDate);
+    List<Business> findAllByRegistrations(Instant startDate, Instant endDate);
     
 }

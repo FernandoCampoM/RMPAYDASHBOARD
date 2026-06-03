@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadNoExisteException;
-import com.retailmanager.rmpaydashboard.models.rmpayAtTheTable.RMPayAtTheTable_User;
 import com.retailmanager.rmpaydashboard.services.DTO.RMPayAtTheTable.RMPayAtTheTable_TerminalDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.RMPayAtTheTable.RMPayAtTheTable_UserDTO;
 import com.retailmanager.rmpaydashboard.services.services.RMPayAtTheTable.TerminalService.ITerminalPayAtTableService;

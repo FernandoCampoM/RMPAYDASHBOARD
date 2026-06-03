@@ -12,7 +12,6 @@ import com.retailmanager.rmpaydashboard.models.Terminal;
 
 import jakarta.transaction.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 
 
@@ -34,15 +33,15 @@ public interface TerminalRepository extends CrudRepository<Terminal, String> {
      * @return              description of return value
      */
     //
-    public List<Terminal> findByBusinessAndExpirationDateLessThan(Business business, LocalDate date);
+    public List<Terminal> findByBusinessAndExpirationDateLessThan(Business business, Instant date);
 
     @Query("SELECT b FROM Terminal b WHERE b.lastPayment BETWEEN :startDate AND :endDate")
-    List<Terminal> findAllByActivations(LocalDate startDate, LocalDate endDate);
+    List<Terminal> findAllByActivations(Instant startDate, Instant endDate);
 
     @Query("Select COUNT(t) from Terminal t where t.enable = true and t.business.businessId = :businessId")
     int countActiveTerminals(Long businessId);
 
-    List<Terminal> findByExpirationDateBefore(LocalDate date);
+    List<Terminal> findByExpirationDateBefore(Instant date);
     @Modifying
     @Transactional
     @Query("UPDATE Terminal t SET t.enable= false where t.terminalId = :terminalId")
@@ -61,7 +60,7 @@ public interface TerminalRepository extends CrudRepository<Terminal, String> {
      List<Terminal> getBusinessForAfterNotification(Instant targetDate);
     
      @Query("Select t from Terminal t where t.automaticPayments=True  and t.expirationDate<=:targetDate and t.business.businessId = :businessId")
-     List<Terminal> findTerminalsForPayment(LocalDate targetDate, Long businessId);
+     List<Terminal> findTerminalsForPayment(Instant targetDate, Long businessId);
      @Query("Select t from Terminal t where t.automaticPayments=True  and t.expirationDate>:targetDate and t.business.businessId = :businessId")
-     List<Terminal> terminalsThatAreNotPaid(LocalDate targetDate, Long businessId);
+     List<Terminal> terminalsThatAreNotPaid(Instant targetDate, Long businessId);
 }

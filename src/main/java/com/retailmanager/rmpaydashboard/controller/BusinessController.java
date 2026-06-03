@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.controller;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -187,7 +188,7 @@ public class BusinessController {
      * @return             a ResponseEntity containing the activations for the specified month and business
      */
     @GetMapping("/business/activations")
-    public ResponseEntity<?> activationsByMonth(@RequestParam(name ="startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate, @RequestParam(name ="endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate){
+    public ResponseEntity<?> activationsByMonth(@RequestParam(name ="startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Instant startDate, @RequestParam(name ="endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Instant endDate){
         return businessService.getActivations(startDate, endDate);
     }
     /**

@@ -2,7 +2,6 @@ package com.retailmanager.rmpaydashboard.backgroundRoutines;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +36,7 @@ public class BackgroundRoutinesService {
     IEmailService emailService;
     @Modifying
     public void deactivateExpiredTerminals(){
-        List<Terminal> terminals = terminalRepository.findByExpirationDateBefore(LocalDate.now());
+        List<Terminal> terminals = terminalRepository.findByExpirationDateBefore(Instant.now());
         for (Terminal terminal : terminals) {
             terminalRepository.deactivateExpiredTerminals(terminal.getTerminalId());
         }
@@ -143,7 +142,7 @@ public class BackgroundRoutinesService {
 
     public void automaticPayments() {
         System.out.println("INICIO DE PAGO AUTOMATICO");
-        LocalDate date = LocalDate.now();
+        Instant date = Instant.now();
         Iterable<Business> allBusinesses = businessRepository.findAll();
         for (Business business : allBusinesses) {
             try {
