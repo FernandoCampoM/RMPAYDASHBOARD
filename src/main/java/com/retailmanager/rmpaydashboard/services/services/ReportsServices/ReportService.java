@@ -20,11 +20,17 @@ import com.retailmanager.rmpaydashboard.repositories.UsersAppRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.EntryExitDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.HourlySalesDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ProductDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BestSellingCategoryProjection;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BestSellingItemProjection;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.CategoryNetSalesProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySalesDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySummaryDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySummaryProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DashboardKpiDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.EarningsReportDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.PaymentNetProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.TipsReportDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.UserTipsReportProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.TransactionDTO;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
@@ -32,9 +38,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.Instant;
@@ -42,17 +50,19 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 public class ReportService implements IReportService {
+    private final AccessDeniedHandler accessDeniedHandler;
     @Autowired
     @Qualifier("mapperbase")
     private ModelMapper mapper;
@@ -73,6 +83,10 @@ public class ReportService implements IReportService {
     @Autowired
     private UsersAppRepository usersAppRepository;
 
+    ReportService(AccessDeniedHandler accessDeniedHandler) {
+        this.accessDeniedHandler = accessDeniedHandler;
+    }
+
     /**
      * Retrieves the daily summary for a given business ID.
      *
@@ -83,12 +97,9 @@ public class ReportService implements IReportService {
     @Transactional(readOnly = true)
     public ResponseEntity<?> getDailySummary(Long businessId, Instant startUtc, Instant endUtc) {
         DailySummaryDTO dailySummaryDTO = new DailySummaryDTO();
-        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
-        Object[] dailySummaryV = null;
-        if (dailySummary != null && dailySummary[0] != null) {
-            dailySummaryV = (Object[]) dailySummary[0];
-        } else {
-            return new ResponseEntity<String>("{\"message\":\"No existen ventas para el Business con businessId " + businessId + "\"}", HttpStatus.NOT_FOUND);
+        DailySummaryProjection dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
+        if(businessId == null){
+            throw new EntidadNoExisteException("El businessId no puede ser nulo");
         }
 
         Business business = serviceDBBusiness.findById(businessId).orElse(null);
@@ -96,59 +107,28 @@ public class ReportService implements IReportService {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
 
-        if (dailySummaryV[0] != null) {
-            dailySummaryDTO.setTotalSales(Double.parseDouble(dailySummaryV[0].toString()));
-        }
-        if (dailySummaryV[1] != null) {
-            dailySummaryDTO.setTotalRefunds(Double.parseDouble(dailySummaryV[1].toString()));
-        }
-        if (dailySummaryV[2] != null) {
-            dailySummaryDTO.setStateTax(Double.parseDouble(dailySummaryV[2].toString()));
-        }
-        if (dailySummaryV[3] != null) {
-            dailySummaryDTO.setMunicipalTax(Double.parseDouble(dailySummaryV[3].toString()));
-        }
-        if (dailySummaryV[4] != null) {
-            dailySummaryDTO.setEstimatedRedTax(Double.parseDouble(dailySummaryV[4].toString()));
-        }
-        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startUtc, endUtc);
-        Double benefit = 0.0;
-        Double propinas = 0.0;
-        if (sales != null && sales.size() > 0) {
-            for (Sale sale : sales) {
-                for (ItemForSale item : sale.getItemsList()) {
-                    benefit += item.getGrossProfit();
-                }
-                propinas += sale.getTipAmount();
-            }
-        }
-        dailySummaryDTO.setBenefit(benefit);
-        dailySummaryDTO.setTotalTips(propinas);
-
-        Object[] dailySummaryByCategory = this.serviceDBSale.dailySummaryForCategory(businessId, startUtc, endUtc);
-        if (dailySummaryByCategory != null) {
-            for (int i = 0; i < dailySummaryByCategory.length; i++) {
-                Object[] dailySummaryByCategoryV = (Object[]) dailySummaryByCategory[i];
-                HashMap<String, String> salesByCategory = new HashMap<>();
-                salesByCategory.put("category", objectToString(dailySummaryByCategoryV[0]));
-                salesByCategory.put("totalAmount", objectToString(dailySummaryByCategoryV[1]));
-                dailySummaryDTO.getSalesByCategory().add(salesByCategory);
-            }
-
-        }
-        Object[] dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startUtc, endUtc);
-        if (dailySummaryBestSellingItems != null) {
-            for (int i = 0; i < dailySummaryBestSellingItems.length; i++) {
-                Object[] dailySummaryBestSellingItemsV = (Object[]) dailySummaryBestSellingItems[i];
-                HashMap<String, String> bestSellingProducts = new HashMap<>();
-                bestSellingProducts.put("name", objectToString(dailySummaryBestSellingItemsV[4]));
-                bestSellingProducts.put("quantity", objectToString(dailySummaryBestSellingItemsV[1]));
-                bestSellingProducts.put("totalAmount", objectToString(dailySummaryBestSellingItemsV[2]));
-                bestSellingProducts.put("benefit", objectToString(dailySummaryBestSellingItemsV[3]));
-                dailySummaryDTO.getBestSellingProducts().add(bestSellingProducts);
-            }
-
-        }
+        
+            dailySummaryDTO.setTotalSales(dailySummary.getSubTotalSales().subtract(dailySummary.getSubTotalRefund()));
+        
+        
+            dailySummaryDTO.setTotalRefunds(dailySummary.getSubTotalRefund());
+       
+        
+            dailySummaryDTO.setStateTax(dailySummary.getStateTaxSales().subtract(dailySummary.getStateTaxRefund()));
+       
+       
+            dailySummaryDTO.setMunicipalTax(dailySummary.getCityTaxSales().subtract(dailySummary.getCityTaxRefund()));
+        
+        
+            dailySummaryDTO.setEstimatedRedTax(dailySummary.getRedTaxSales().subtract(dailySummary.getRedTaxRefund()));
+            dailySummaryDTO.setBenefit(dailySummary.getGrossBenefit());
+            dailySummaryDTO.setTotalTips(dailySummary.getTotalTips().subtract(dailySummary.getTotalTipsRefund()));
+      
+        
+       List<CategoryNetSalesProjection>  dailySummaryByCategory = this.serviceDBSale.summaryForCategory(businessId, startUtc, endUtc);
+        dailySummaryDTO.setSalesByCategory(dailySummaryByCategory);
+       List<BestSellingItemProjection> dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startUtc, endUtc);
+        dailySummaryDTO.setBestSellingProducts(dailySummaryBestSellingItems);
         return new ResponseEntity<>(dailySummaryDTO, HttpStatus.OK);
     }
 
@@ -164,60 +144,35 @@ public class ReportService implements IReportService {
     public ResponseEntity<?> getSummaryByDateRangee(Long businessId, Instant startUtc, Instant endUtc) {
         DailySummaryDTO dailySummaryDTO = new DailySummaryDTO();
 
-        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
-        Object[] dailySummaryV = null;
-        if (dailySummary != null && dailySummary[0] != null) {
-            dailySummaryV = (Object[]) dailySummary[0];
-        } else {
-            return new ResponseEntity<String>("{\"message\":\"No existen ventas para el Business con businessId " + businessId + "\"}", HttpStatus.NOT_FOUND);
+        DailySummaryProjection  dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
+        if(businessId == null){
+            throw new EntidadNoExisteException("El businessId no puede ser nulo");
         }
         Business business = serviceDBBusiness.findById(businessId).orElse(null);
         if (business == null) {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
+        
+            dailySummaryDTO.setTotalSales(dailySummary.getSubTotalSales().subtract(dailySummary.getSubTotalRefund()));
+        
+        
+            dailySummaryDTO.setTotalRefunds(dailySummary.getSubTotalRefund());
 
-        if (dailySummaryV[0] != null) {
-            dailySummaryDTO.setTotalSales(Double.parseDouble(dailySummaryV[0].toString()));
+        
+            dailySummaryDTO.setStateTax(dailySummary.getStateTaxSales().subtract(dailySummary.getStateTaxRefund()));
+        
+            dailySummaryDTO.setMunicipalTax(dailySummary.getCityTaxSales().subtract(dailySummary.getCityTaxRefund()));
+
+        
+            dailySummaryDTO.setEstimatedRedTax(dailySummary.getRedTaxSales().subtract(dailySummary.getRedTaxRefund()));
+            dailySummaryDTO.setBenefit(dailySummary.getGrossBenefit());
+                dailySummaryDTO.setTotalTips(dailySummary.getTotalTips().subtract(dailySummary.getTotalTipsRefund()));
+        
+        List<PaymentNetProjection> bestPaymentTypes = this.serviceDBSale.getBestPaymentTypes(businessId, startUtc, endUtc);
+        if(bestPaymentTypes != null){
+            dailySummaryDTO.setBestSellingPayMethods(bestPaymentTypes);
         }
-        if (dailySummaryV[1] != null) {
-            dailySummaryDTO.setTotalRefunds(Double.parseDouble(dailySummaryV[1].toString()));
-        }
-        if (dailySummaryV[2] != null) {
-            dailySummaryDTO.setStateTax(Double.parseDouble(dailySummaryV[2].toString()));
-        }
-        if (dailySummaryV[3] != null) {
-            dailySummaryDTO.setMunicipalTax(Double.parseDouble(dailySummaryV[3].toString()));
-        }
-        if (dailySummaryV[4] != null) {
-            dailySummaryDTO.setEstimatedRedTax(Double.parseDouble(dailySummaryV[4].toString()));
-        }
-        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startUtc, endUtc);
-        HashMap<String, Double> payMethosSales = new HashMap<>();
-        Double benefit = 0.0;
-        Double propinas = 0.0;
-        if (sales != null && sales.size() > 0) {
-            for (Sale sale : sales) {
-                for (ItemForSale item : sale.getItemsList()) {
-                    benefit += item.getGrossProfit();
-                }
-                for (Transactions transaction : sale.getTransactions()) {
-                    if (payMethosSales.containsKey(transaction.getPaymentType())) {
-                        payMethosSales.put(transaction.getPaymentType(), payMethosSales.get(transaction.getPaymentType()) + transaction.getAmount());
-                    } else {
-                        payMethosSales.put(transaction.getPaymentType(), transaction.getAmount());
-                    }
-                }
-                propinas += sale.getTipAmount();
-            }
-        }
-        dailySummaryDTO.setBenefit(benefit);
-        dailySummaryDTO.setTotalTips(propinas);
-        for (Map.Entry<String, Double> entry : payMethosSales.entrySet()) {
-            HashMap<String, String> payMethosSalesV = new HashMap<>();
-            payMethosSalesV.put("paymentType", entry.getKey());
-            payMethosSalesV.put("totalAmount", entry.getValue().toString());
-            dailySummaryDTO.getBestSellingPayMethods().add(payMethosSalesV);
-        }
+        
         Object[] refundSummary = this.serviceDBSale.refundSumaryByRange(businessId, startUtc, endUtc);
 
         for (int i = 0; i < refundSummary.length; i++) {
@@ -233,32 +188,17 @@ public class ReportService implements IReportService {
         }
 
         dailySummaryDTO.setSalesByCategory(new ArrayList<>());
-        Object[] dailySummaryByCategory = this.serviceDBSale.summaryForCategory(businessId, startUtc, endUtc);
-        if (dailySummaryByCategory != null) {
-            for (int i = 0; i < dailySummaryByCategory.length; i++) {
-                Object[] dailySummaryByCategoryV = (Object[]) dailySummaryByCategory[i];
-                HashMap<String, String> salesByCategory = new HashMap<>();
-                salesByCategory.put("category", objectToString(dailySummaryByCategoryV[0]));
-                salesByCategory.put("totalAmount", objectToString(dailySummaryByCategoryV[1]));
-                dailySummaryDTO.getSalesByCategory().add(salesByCategory);
-            }
-
+        List<CategoryNetSalesProjection> dailySummaryByCategory = this.serviceDBSale.summaryForCategory(businessId, startUtc, endUtc);
+        if(accessDeniedHandler != null){
+            dailySummaryDTO.setSalesByCategory(dailySummaryByCategory);
         }
 
 
         dailySummaryDTO.setBestSellingProducts(new ArrayList<>());
 
-        Object[] dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startUtc, endUtc);
+        List<BestSellingItemProjection> dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startUtc, endUtc);
         if (dailySummaryBestSellingItems != null) {
-            for (int i = 0; i < dailySummaryBestSellingItems.length; i++) {
-                Object[] dailySummaryBestSellingItemsV = (Object[]) dailySummaryBestSellingItems[i];
-                HashMap<String, String> bestSellingProducts = new HashMap<>();
-                bestSellingProducts.put("name", objectToString(dailySummaryBestSellingItemsV[4]));
-                bestSellingProducts.put("quantity", objectToString(dailySummaryBestSellingItemsV[1]));
-                bestSellingProducts.put("totalAmount", objectToString(dailySummaryBestSellingItemsV[2]));
-                bestSellingProducts.put("benefit", objectToString(dailySummaryBestSellingItemsV[3]));
-                dailySummaryDTO.getBestSellingProducts().add(bestSellingProducts);
-            }
+            dailySummaryDTO.setBestSellingProducts(dailySummaryBestSellingItems);
 
         }
 
@@ -287,6 +227,9 @@ public class ReportService implements IReportService {
     @Override
     public ResponseEntity<?> getBestSellingItems(Long businessId, Instant startUtc, Instant endUtc,
                                                  String categoria) {
+        if (businessId == null) {
+            throw new EntidadNoExisteException("El businessId no puede ser nulo");
+        }
         List<ItemForSale> productDTOs = new ArrayList<>();
         Business business = serviceDBBusiness.findById(businessId).orElse(null);
         if (business != null) {
@@ -314,33 +257,18 @@ public class ReportService implements IReportService {
      */
     @Override
     public ResponseEntity<?> getSalesByCategory(Long businessId, Instant startUtc, Instant endUtc) {
+        if(businessId == null){
+            throw new EntidadNoExisteException("El businessId no puede ser nulo");
+        }
         if (!this.serviceDBBusiness.existsById(businessId)) {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
-        List<HashMap<String, String>> salesByCategoryDTOs = new ArrayList<>();
-        Object[] salesByCategory = this.serviceDBSale.getBestSellingItemsXCategory(businessId, startUtc, endUtc);
-        for (int i = 0; i < salesByCategory.length; i++) {
-            HashMap<String, String> data = new HashMap<>();
-            Object[] salesByCategoryV = (Object[]) salesByCategory[i];
-            if (salesByCategoryV[0] != null) {
-                data.put("category", objectToString(salesByCategoryV[0]));
-            }
-            if (salesByCategoryV[1] != null) {
-                data.put("totalItems", objectToString(salesByCategoryV[1]));
-            }
-            if (salesByCategoryV[2] != null) {
-                data.put("totalAmount", objectToString(salesByCategoryV[2]));
-            }
-            if (salesByCategoryV[3] != null) {
-                data.put("totalCost", objectToString(salesByCategoryV[3]));
-            }
-            if (salesByCategoryV[4] != null) {
-                data.put("totalGrossProfit", objectToString(salesByCategoryV[4]));
-            }
-            salesByCategoryDTOs.add(data);
+       List<BestSellingCategoryProjection> salesByCategory = this.serviceDBSale.getBestSellingItemsXCategory(businessId, startUtc, endUtc);
+        if(salesByCategory != null){
+           return new ResponseEntity<>(salesByCategory, HttpStatus.OK);
         }
 
-        return new ResponseEntity<>(salesByCategoryDTOs, HttpStatus.OK);
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.OK);
     }
 
     /**
@@ -354,77 +282,38 @@ public class ReportService implements IReportService {
     @Override
     public ResponseEntity<?> getEarningsReport(Long businessId, Instant startUtc, Instant endUtc) {
         EarningsReportDTO dailySummaryDTO = new EarningsReportDTO();
-
-        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
-        Object[] dailySummaryV = null;
-        if (dailySummary != null && dailySummary[0] != null) {
-            dailySummaryV = (Object[]) dailySummary[0];
-        } else {
-            return new ResponseEntity<String>("{\"message\":\"No existen ventas para el Business con businessId " + businessId + "\"}", HttpStatus.NOT_FOUND);
+        if(businessId == null){
+            throw new EntidadNoExisteException("El businessId no puede ser nulo");
         }
+       DailySummaryProjection dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
+        
         Business business = serviceDBBusiness.findById(businessId).orElse(null);
         if (business == null) {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
 
-        if (dailySummaryV[0] != null) {
-            dailySummaryDTO.setTotalSales(Double.parseDouble(dailySummaryV[0].toString()));
-        }
+        
+            dailySummaryDTO.setTotalSales(dailySummary.getTotalSales().subtract(dailySummary.getTotalRefund()));
+       
+        
+            dailySummaryDTO.setStateTax(dailySummary.getStateTaxSales().subtract(dailySummary.getStateTaxRefund()));
+        
+       
+            dailySummaryDTO.setMunicipalTax(dailySummary.getCityTaxSales().subtract(dailySummary.getCityTaxRefund()));
 
-        if (dailySummaryV[2] != null) {
-            dailySummaryDTO.setStateTax(Double.parseDouble(dailySummaryV[2].toString()));
-        }
-        if (dailySummaryV[3] != null) {
-            dailySummaryDTO.setMunicipalTax(Double.parseDouble(dailySummaryV[3].toString()));
-        }
-        if (dailySummaryV[4] != null) {
-            dailySummaryDTO.setEstimatedRedTax(Double.parseDouble(dailySummaryV[4].toString()));
-        }
-        if (dailySummaryV[5] != null) {
-            dailySummaryDTO.setSubTotalSales(Double.parseDouble(dailySummaryV[5].toString()));
-        }
-        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startUtc, endUtc);
+        
+            dailySummaryDTO.setEstimatedRedTax(dailySummary.getRedTaxSales().subtract(dailySummary.getRedTaxRefund()));
+        
+            dailySummaryDTO.setSubTotalSales(dailySummary.getSubTotalSales());
+            dailySummaryDTO.setBenefit(dailySummary.getGrossBenefit());
+           
+        List<BestSellingCategoryProjection> salesByCategory = this.serviceDBSale.getBestSellingItemsXCategory(businessId, startUtc, endUtc);
+        
+        dailySummaryDTO.setEarningsByCategory(salesByCategory);
 
-        Double benefit = 0.0;
-        Double propinas = 0.0;
-        if (sales != null && sales.size() > 0) {
-            for (Sale sale : sales) {
-                for (ItemForSale item : sale.getItemsList()) {
-                    benefit += item.getGrossProfit();
-                }
-                propinas += sale.getTipAmount();
-            }
-        }
-        dailySummaryDTO.setBenefit(benefit);
-        List<HashMap<String, String>> earningsByCategoryDTOs = new ArrayList<>();
-        Object[] salesByCategory = this.serviceDBSale.getBestSellingItemsXCategory(businessId, startUtc, endUtc);
-        for (int i = 0; i < salesByCategory.length; i++) {
-            HashMap<String, String> data = new HashMap<>();
-            Object[] salesByCategoryV = (Object[]) salesByCategory[i];
-            if (salesByCategoryV[0] != null) {
-                data.put("category", objectToString(salesByCategoryV[0]));
-            }
-
-            if (salesByCategoryV[4] != null) {
-                data.put("totalGrossProfit", objectToString(salesByCategoryV[4]));
-            }
-            earningsByCategoryDTOs.add(data);
-        }
-        dailySummaryDTO.setEarningsByCategory(earningsByCategoryDTOs);
-
-        Object[] dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startUtc, endUtc);
-        if (dailySummaryBestSellingItems != null) {
-            for (int i = 0; i < dailySummaryBestSellingItems.length; i++) {
-                Object[] dailySummaryBestSellingItemsV = (Object[]) dailySummaryBestSellingItems[i];
-                HashMap<String, String> bestSellingProducts = new HashMap<>();
-                bestSellingProducts.put("name", objectToString(dailySummaryBestSellingItemsV[4]));
-                bestSellingProducts.put("quantity", objectToString(dailySummaryBestSellingItemsV[1]));
-                bestSellingProducts.put("totalAmount", objectToString(dailySummaryBestSellingItemsV[2]));
-                bestSellingProducts.put("benefit", objectToString(dailySummaryBestSellingItemsV[3]));
-                dailySummaryDTO.getBestSellingProducts().add(bestSellingProducts);
-            }
-
-        }
+        List<BestSellingItemProjection> dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startUtc, endUtc);
+        
+        dailySummaryDTO.setBestSellingProducts(dailySummaryBestSellingItems);
 
         return new ResponseEntity<>(dailySummaryDTO, HttpStatus.OK);
     }
@@ -440,52 +329,26 @@ public class ReportService implements IReportService {
     @Override
     public ResponseEntity<?> getTips(Long businessId, Instant startUtc, Instant endUtc) {
         TipsReportDTO dailySummaryDTO = new TipsReportDTO();
-
-        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
-        Object[] dailySummaryV = null;
-        if (dailySummary != null && dailySummary[0] != null) {
-            dailySummaryV = (Object[]) dailySummary[0];
-        } else {
-            return new ResponseEntity<String>("{\"message\":\"No existen ventas para el Business con businessId " + businessId + "\"}", HttpStatus.NOT_FOUND);
+        if(businessId == null){
+            throw new EntidadNoExisteException("El businessId no puede ser nulo");
         }
+        DailySummaryProjection dailySummary = this.serviceDBSale.dailySummary(businessId, startUtc, endUtc);
+        
         Business business = serviceDBBusiness.findById(businessId).orElse(null);
         if (business == null) {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
 
-        if (dailySummaryV[0] != null) {
-            dailySummaryDTO.setTotalSales(Double.parseDouble(dailySummaryV[0].toString()));
-        }
-        if (dailySummaryV[5] != null) {
-            dailySummaryDTO.setSubTotalSales(Double.parseDouble(dailySummaryV[5].toString()));
-        }
-        List<Sale> sales = this.serviceDBSale.findBySaleTransactionTypeAndSaleStatusAndBusinessAndSaleEndDateBetween("SALE", "SUCCEED", business, startUtc, endUtc);
+            dailySummaryDTO.setTotalSales(dailySummary.getTotalSales().subtract(dailySummary.getTotalRefund()));
+        
+            dailySummaryDTO.setSubTotalSales(dailySummary.getSubTotalSales());
+            dailySummaryDTO.setTotalTips(dailySummary.getTotalTips().subtract(dailySummary.getTotalTipsRefund()));
 
-        Double benefit = 0.0;
-        Double propinas = 0.0;
-        if (sales != null && sales.size() > 0) {
-            for (Sale sale : sales) {
-                for (ItemForSale item : sale.getItemsList()) {
-                    benefit += item.getGrossProfit();
-                }
-                propinas += sale.getTipAmount();
-            }
-        }
-        dailySummaryDTO.setTotalTips(propinas);
         dailySummaryDTO.setUserTips(new ArrayList<>());
-        Object[] tipsByUsers = this.serviceDBSale.getUserTipsReport(businessId, startUtc, endUtc);
+        List<UserTipsReportProjection> tipsByUsers = this.serviceDBSale.getUserTipsReport(businessId, startUtc, endUtc);
         if (tipsByUsers != null) {
-            for (int i = 0; i < tipsByUsers.length; i++) {
-                Object[] dailySummaryBestSellingItemsV = (Object[]) tipsByUsers[i];
-                HashMap<String, String> bestSellingProducts = new HashMap<>();
-                bestSellingProducts.put("username", objectToString(dailySummaryBestSellingItemsV[1]));
-                bestSellingProducts.put("totalSales", objectToString(dailySummaryBestSellingItemsV[2]));
-                bestSellingProducts.put("subTotalSales", objectToString(dailySummaryBestSellingItemsV[3]));
-                bestSellingProducts.put("totalTips", objectToString(dailySummaryBestSellingItemsV[4]));
-                bestSellingProducts.put("benefit", objectToString(dailySummaryBestSellingItemsV[5]));
-                dailySummaryDTO.getUserTips().add(bestSellingProducts);
-            }
-        }
+            dailySummaryDTO.setUserTips(tipsByUsers);
+        } 
         return new ResponseEntity<>(dailySummaryDTO, HttpStatus.OK);
     }
 
@@ -499,6 +362,10 @@ public class ReportService implements IReportService {
      */
     @Override
     public ResponseEntity<?> getTaxes(Long businessId, Instant startUtc, Instant endUtc) {
+        
+        if(businessId == null){
+            throw new EntidadNoExisteException("El businessId no puede ser nulo");
+        }
         if (!this.serviceDBBusiness.existsById(businessId)) {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
@@ -549,6 +416,9 @@ public class ReportService implements IReportService {
      */
     @Override
     public ResponseEntity<?> getReceipts(Long businessId, Instant startUtc, Instant endUtc) {
+        if(businessId == null){
+            throw new EntidadNoExisteException("El businessId no puede ser nulo");
+        }
         if (!this.serviceDBBusiness.existsById(businessId)) {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
@@ -586,6 +456,10 @@ public class ReportService implements IReportService {
      */
     @Override
     public ResponseEntity<?> getHomeReport(Long businessId, LocalDate startDate, LocalDate endDate, String filter) {
+        
+        if(businessId == null){
+            throw new EntidadNoExisteException("El businessId no puede ser nulo");
+        }
         Business business = serviceDBBusiness.findById(businessId).orElse(null);
         if (business == null) {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
@@ -617,46 +491,31 @@ public class ReportService implements IReportService {
                 endDate = startDate;
             }
         }
-
+        ZoneId zone = ZoneOffset.UTC;
+        Instant startInstant = startDate.atStartOfDay(zone).toInstant();
+Instant endInstant = endDate.plusDays(1).atStartOfDay(zone).toInstant();
         ///////////Info para el reporte del dia
-        Object[] dailySummary = this.serviceDBSale.dailySummary(businessId, startDate, endDate);
-        Object[] dailySummaryV = null;
-        if (dailySummary != null && dailySummary[0] != null) {
-            dailySummaryV = (Object[]) dailySummary[0];
-        } else {
-            return new ResponseEntity<String>("{\"message\":\"No existen ventas para el Business con businessId " + businessId + "\"}", HttpStatus.NOT_FOUND);
-        }
+        DailySummaryProjection dailySummary = this.serviceDBSale.dailySummary(businessId, startInstant, endInstant);
+       
         HashMap<String, Object> dailySummaryDTO = new HashMap<>();
-        if (dailySummaryV[0] != null) {
-            dailySummaryDTO.put("totalSales", Double.parseDouble(dailySummaryV[0].toString()));
-        } else {
-            dailySummaryDTO.put("totalSales", 0.0);
-        }
-        Double totalTax = 0.0;
-        if (dailySummaryV[2] != null) {
-            totalTax = totalTax + Double.parseDouble(dailySummaryV[2].toString());
-        }
-        if (dailySummaryV[3] != null) {
-            totalTax = totalTax + Double.parseDouble(dailySummaryV[3].toString());
-        }
-        if (dailySummaryV[4] != null) {
-            totalTax = totalTax + Double.parseDouble(dailySummaryV[4].toString());
-        }
-        if (dailySummaryV[2] != null) {
+       
+            dailySummaryDTO.put("totalSales", dailySummary.getSubTotalSales().subtract(dailySummary.getSubTotalRefund()));
+        
+        BigDecimal totalTax = BigDecimal.ZERO;
+            totalTax = totalTax.add(dailySummary.getStateTaxSales().subtract(dailySummary.getStateTaxRefund()));
+        
+            totalTax = totalTax.add(dailySummary.getCityTaxSales().subtract(dailySummary.getCityTaxRefund()));
+       
+            totalTax = totalTax.add(dailySummary.getRedTaxSales().subtract(dailySummary.getRedTaxRefund()));
+        
             dailySummaryDTO.put("totalTax", totalTax);
-        } else {
-            dailySummaryDTO.put("totalTax", 0.0);
-        }
-        if (dailySummaryV[6] != null) {
-            dailySummaryDTO.put("grossProfit", Double.parseDouble(dailySummaryV[6].toString()));
-        } else {
-            dailySummaryDTO.put("grossProfit", 0.0);
-        }
-        if (dailySummaryV[7] != null) {
-            dailySummaryDTO.put("totalTips", Double.parseDouble(dailySummaryV[7].toString()));
-        } else {
-            dailySummaryDTO.put("totalTips", 0.0);
-        }
+        
+        
+            dailySummaryDTO.put("grossProfit", dailySummary.getGrossBenefit());
+       
+        
+            dailySummaryDTO.put("totalTips", dailySummary.getTotalTips().subtract(dailySummary.getTotalTipsRefund()));
+        
         ///////////Info para el reporte del ANUAL
         Object[] annualSummary = this.serviceDBSale.annualSummary(businessId, startDate.getYear());
         Object[] annualSummaryV = null;

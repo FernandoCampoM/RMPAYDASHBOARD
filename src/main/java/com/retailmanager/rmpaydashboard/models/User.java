@@ -1,7 +1,6 @@
 package com.retailmanager.rmpaydashboard.models;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 
 import com.retailmanager.rmpaydashboard.enums.Rol;

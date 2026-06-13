@@ -1,6 +1,5 @@
 package com.retailmanager.rmpaydashboard.models.Interface;
 
-import java.time.Instant;
 
 public interface TransactionDetailProjection {
 
