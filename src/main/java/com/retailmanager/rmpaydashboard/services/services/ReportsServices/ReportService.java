@@ -3,7 +3,6 @@ package com.retailmanager.rmpaydashboard.services.services.ReportsServices;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadNoExisteException;
 import com.retailmanager.rmpaydashboard.models.Business;
 import com.retailmanager.rmpaydashboard.models.EntryExit;
-import com.retailmanager.rmpaydashboard.models.ItemForSale;
 import com.retailmanager.rmpaydashboard.models.Product;
 import com.retailmanager.rmpaydashboard.models.Sale;
 import com.retailmanager.rmpaydashboard.models.Transactions;
@@ -21,6 +20,7 @@ import com.retailmanager.rmpaydashboard.services.DTO.EntryExitDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.HourlySalesDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ProductDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BestSellingCategoryProjection;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BestSellingItemByCategoryProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BestSellingItemProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.CategoryNetSalesProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySalesDTO;
@@ -28,7 +28,9 @@ import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySummaryDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySummaryProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DashboardKpiDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.EarningsReportDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.MonthlySummaryProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.PaymentNetProjection;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.TaxesProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.TipsReportDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.UserTipsReportProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.TransactionDTO;
@@ -230,7 +232,7 @@ public class ReportService implements IReportService {
         if (businessId == null) {
             throw new EntidadNoExisteException("El businessId no puede ser nulo");
         }
-        List<ItemForSale> productDTOs = new ArrayList<>();
+        List<BestSellingItemByCategoryProjection> productDTOs = new ArrayList<>();
         Business business = serviceDBBusiness.findById(businessId).orElse(null);
         if (business != null) {
             if (categoria.compareTo("TODAS") != 0) {
@@ -241,7 +243,7 @@ public class ReportService implements IReportService {
         } else {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
-        productDTOs.forEach(productDTO -> productDTO.setSale(null));
+        
         return new ResponseEntity<>(productDTOs, HttpStatus.OK);
 
     }
@@ -369,35 +371,8 @@ public class ReportService implements IReportService {
         if (!this.serviceDBBusiness.existsById(businessId)) {
             throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
         }
-        List<Sale> sales = this.serviceDBSale.getSalesByDateRange(businessId, startUtc, endUtc);
-        HashMap<String, String> data = new HashMap<>();
-        data.put("totalTax", String.valueOf(0));
-        data.put("totalSales", String.valueOf(0));
-        data.put("totalStatalTax", String.valueOf(0));
-        data.put("totalCityTax", String.valueOf(0));
-        data.put("totalReduceTax", String.valueOf(0));
-        data.put("totalTaxableSales", String.valueOf(0));
-        if (sales != null && sales.size() > 0) {
-            double totalTax = 0;
-            double totalSales = 0;
-            double totalStatalTax = 0;
-            double totalCityTax = 0;
-            double totalReduceTax = 0;
-            for (Sale sale : sales) {
-                totalSales += sale.getSaleTotalAmount();
-                totalStatalTax += sale.getSaleStateTaxAmount();
-                totalCityTax += sale.getSaleCityTaxAmount();
-                totalReduceTax += sale.getSaleReduceTax();
-                totalTax += sale.getSaleCityTaxAmount() + sale.getSaleStateTaxAmount() + sale.getSaleReduceTax();
-            }
-            data.put("totalTax", String.valueOf(totalTax));
-            data.put("totalSales", String.valueOf(totalSales));
-            data.put("totalStatalTax", String.valueOf(totalStatalTax));
-            data.put("totalCityTax", String.valueOf(totalCityTax));
-            data.put("totalReduceTax", String.valueOf(totalReduceTax));
-            data.put("totalTaxableSales", String.valueOf(totalSales - totalStatalTax - totalCityTax - totalReduceTax));
-        }
-        return new ResponseEntity<>(data, HttpStatus.OK);
+       TaxesProjection taxes = this.serviceDBSale.getTaxes(businessId, startUtc, endUtc);
+        return new ResponseEntity<>(taxes, HttpStatus.OK);
     }
 
     private String objectToString(Object obj) {
@@ -517,109 +492,82 @@ Instant endInstant = endDate.plusDays(1).atStartOfDay(zone).toInstant();
             dailySummaryDTO.put("totalTips", dailySummary.getTotalTips().subtract(dailySummary.getTotalTipsRefund()));
         
         ///////////Info para el reporte del ANUAL
-        Object[] annualSummary = this.serviceDBSale.annualSummary(businessId, startDate.getYear());
-        Object[] annualSummaryV = null;
-        if (annualSummary != null && annualSummary[0] != null) {
-            annualSummaryV = (Object[]) annualSummary[0];
-        }
-        Object[] annualSummarybefore = this.serviceDBSale.annualSummary(businessId, startDate.getYear() - 1);
-        Object[] annualSummaryVbefore = null;
-        if (annualSummarybefore != null && annualSummarybefore[0] != null) {
-            annualSummaryVbefore = (Object[]) annualSummarybefore[0];
-        }
+        int year = startInstant.atZone(zone).getYear();
+        Instant currentYearStart = LocalDate.of(year, 1, 1)
+        .atStartOfDay(zone)
+        .toInstant();
+
+        Instant currentYearEnd = LocalDate.now()
+        .atTime(LocalTime.MAX)
+        .atZone(zone)
+        .toInstant();
+        DailySummaryProjection annualSummary = this.serviceDBSale.dailySummary(businessId, currentYearStart, currentYearEnd);
+        Instant lastYearStart = LocalDate.of(year-1, 1, 1)
+        .atStartOfDay(zone)
+        .toInstant();
+
+        Instant lastYearEnd = LocalDate.now().minusYears(1)
+        .atTime(LocalTime.MAX)
+        .atZone(zone)
+        .toInstant();
+        DailySummaryProjection annualSummarybefore = this.serviceDBSale.dailySummary(businessId, lastYearStart, lastYearEnd);
+        
         HashMap<String, Object> annualSummaryDTO = new HashMap<>();
-        if (annualSummaryV != null) {
-            if (annualSummaryV[0] != null) {
-                Double totalSales = Double.parseDouble(annualSummaryV[0].toString());
+        
+            
+                BigDecimal totalSales = annualSummary.getSubTotalSales().subtract(annualSummary.getSubTotalRefund());
                 annualSummaryDTO.put("totalSales", totalSales);
-                Double totalSalesBefore = 0.0;
-                if (annualSummaryVbefore != null && annualSummaryVbefore[0] != null) {
-                    totalSalesBefore = Double.parseDouble(annualSummaryVbefore[0].toString());
-
-
-                }
-                if (totalSales > totalSalesBefore) {
+                BigDecimal totalSalesBefore = annualSummarybefore.getSubTotalSales().subtract(annualSummarybefore.getSubTotalRefund());
+                
+                if (totalSales.compareTo(totalSalesBefore) > 0) {
                     annualSummaryDTO.put("totalSalesStatus", 1);
-                } else if (totalSales < totalSalesBefore) {
+                } else if (totalSales.compareTo(totalSalesBefore) < 0) {
                     annualSummaryDTO.put("totalSalesStatus", -1);
                 } else {
                     annualSummaryDTO.put("totalSalesStatus", 0);
                 }
-            } else {
-                annualSummaryDTO.put("totalSales", 0.0);
-                annualSummaryDTO.put("totalSalesStatus", 0);
-            }
-            Double totalTaxAnnual = 0.0;
-            if (annualSummaryV[2] != null) {
-
-                totalTaxAnnual = totalTaxAnnual + Double.parseDouble(annualSummaryV[2].toString());
-            }
-            if (annualSummaryV[3] != null) {
-                totalTaxAnnual = totalTaxAnnual + Double.parseDouble(annualSummaryV[3].toString());
-            }
-            if (annualSummaryV[4] != null) {
-                totalTaxAnnual = totalTaxAnnual + Double.parseDouble(annualSummaryV[4].toString());
-            }
-            Double totalTaxAnnualBefore = 0.0;
-            if (annualSummaryVbefore != null && annualSummaryVbefore[2] != null) {
-
-                totalTaxAnnualBefore = totalTaxAnnualBefore + Double.parseDouble(annualSummaryVbefore[2].toString());
-            }
-            if (annualSummaryVbefore != null && annualSummaryVbefore[3] != null) {
-                totalTaxAnnualBefore = totalTaxAnnualBefore + Double.parseDouble(annualSummaryVbefore[3].toString());
-            }
-            if (annualSummaryVbefore != null && annualSummaryVbefore[4] != null) {
-                totalTaxAnnualBefore = totalTaxAnnualBefore + Double.parseDouble(annualSummaryVbefore[4].toString());
-            }
+            
+            BigDecimal totalTaxAnnual = annualSummary.getStateTaxSales().subtract(annualSummary.getStateTaxRefund()).add(annualSummary.getCityTaxSales().subtract(annualSummary.getCityTaxRefund())).add(annualSummary.getRedTaxSales().subtract(annualSummary.getRedTaxRefund()));
+            
+            BigDecimal totalTaxAnnualBefore = annualSummarybefore.getStateTaxSales().subtract(annualSummarybefore.getStateTaxRefund()).add(annualSummarybefore.getCityTaxSales().subtract(annualSummarybefore.getCityTaxRefund())).add(annualSummarybefore.getRedTaxSales().subtract(annualSummarybefore.getRedTaxRefund()));
+            
             annualSummaryDTO.put("totalTax", totalTaxAnnual);
-            if (totalTaxAnnual > totalTaxAnnualBefore) {
+            if (totalTaxAnnual.compareTo(totalTaxAnnualBefore) > 0) {
                 annualSummaryDTO.put("totalTaxStatus", 1);
-            } else if (totalTaxAnnual < totalTaxAnnualBefore) {
+            } else if (totalTaxAnnual.compareTo(totalTaxAnnualBefore) < 0) {
                 annualSummaryDTO.put("totalTaxStatus", -1);
             } else {
                 annualSummaryDTO.put("totalTaxStatus", 0);
             }
 
-            if (annualSummaryV[6] != null) {
-                Double grossProfit = Double.parseDouble(annualSummaryV[6].toString());
+           
+                BigDecimal grossProfit = annualSummary.getGrossBenefit();
                 annualSummaryDTO.put("grossProfit", grossProfit);
-                Double grossProfitBefore = 0.0;
-                if (annualSummaryVbefore != null && annualSummaryVbefore[6] != null) {
-                    grossProfitBefore = Double.parseDouble(annualSummaryVbefore[6].toString());
-
-                }
-                if (grossProfit > grossProfitBefore) {
+                BigDecimal grossProfitBefore = annualSummarybefore.getGrossBenefit();
+                
+                if (grossProfit.compareTo(grossProfitBefore) > 0) {
                     annualSummaryDTO.put("grossProfitStatus", 1);
-                } else if (grossProfit < grossProfitBefore) {
+                } else if (grossProfit.compareTo(grossProfitBefore) < 0) {
                     annualSummaryDTO.put("grossProfitStatus", -1);
                 } else {
                     annualSummaryDTO.put("grossProfitStatus", 0);
                 }
 
-            } else {
-                annualSummaryDTO.put("grossProfit", 0.0);
-                annualSummaryDTO.put("grossProfitStatus", 0);
-            }
-            if (annualSummaryV[8] != null) {
-                Double totalWorkCost = Double.parseDouble(annualSummaryV[8].toString());
+           
+            
+                BigDecimal totalWorkCost = annualSummary.getTotalWorkCost() ;
                 annualSummaryDTO.put("totalWorkCost", totalWorkCost);
-                Double totalWorkCostBefore = 0.0;
-                if (annualSummaryVbefore != null && annualSummaryVbefore[8] != null) {
-                    totalWorkCostBefore = Double.parseDouble(annualSummaryVbefore[8].toString());
-
-                }
-                if (totalWorkCost > totalWorkCostBefore) {
+                BigDecimal totalWorkCostBefore = annualSummarybefore.getTotalWorkCost() ;
+                
+                if (totalWorkCost.compareTo(totalWorkCostBefore) > 0) {
                     annualSummaryDTO.put("totalWorkCostStatus", 1);
-                } else if (totalWorkCost < totalWorkCostBefore) {
+                } else if (totalWorkCost.compareTo(totalWorkCostBefore) < 0) {
                     annualSummaryDTO.put("totalWorkCostStatus", -1);
                 } else {
                     annualSummaryDTO.put("totalWorkCostStatus", 0);
                 }
-            } else {
-                annualSummaryDTO.put("totalWorkCost", 0.0);
-                annualSummaryDTO.put("totalWorkCostStatus", 0);
-            }
-        }
+            
+        
 
 
         dailySummaryDTO.put("annualSummary", annualSummaryDTO);
@@ -630,15 +578,13 @@ Instant endInstant = endDate.plusDays(1).atStartOfDay(zone).toInstant();
         List<Double> monthlySales = new ArrayList<>();
         for (int i = 0; i < diasEnMes; i++) {
             LocalDate date = LocalDate.of(startDate.getYear(), startDate.getMonth(), i + 1);
-            Object[] monthlySummary = this.serviceDBSale.monthlySummary(businessId, date);
+            MonthlySummaryProjection monthlySummary = this.serviceDBSale.monthlySummary(businessId, date);
 
-            if (monthlySummary != null && monthlySummary[0] != null) {
+            
                 System.out.println("MES " + (i + 1) + " -> " + date.toString());
-                System.out.println("monthlySummary[0].toString(): " + monthlySummary[0].toString());
-                monthlySales.add(Double.parseDouble(monthlySummary[0].toString()));
-            } else {
-                monthlySales.add(0.0);
-            }
+                System.out.println("monthlySummary.getTotalSales(): " + monthlySummary.getTotalSales());
+                monthlySales.add(monthlySummary.getTotalSales());
+           
         }
         dailySummaryDTO.put("monthlySales", monthlySales);
         //ACTIVIDAD DE VENTA MENSUAL del mes previo
@@ -647,10 +593,10 @@ Instant endInstant = endDate.plusDays(1).atStartOfDay(zone).toInstant();
         List<Double> previusMonthlySales = new ArrayList<>();
         for (int i = 0; i < diasEnMes; i++) {
             LocalDate date = LocalDate.of(startDate.getYear(), startDate.getMonth().minus(1), i + 1);
-            Object[] monthlySummary = this.serviceDBSale.monthlySummary(businessId, date);
+            MonthlySummaryProjection monthlySummary = this.serviceDBSale.monthlySummary(businessId, date);
 
-            if (monthlySummary != null && monthlySummary[0] != null) {
-                previusMonthlySales.add(Double.parseDouble(monthlySummary[0].toString()));
+            if (monthlySummary != null && monthlySummary.getTotalSales() != null) {
+                previusMonthlySales.add(monthlySummary.getTotalSales());
             } else {
                 previusMonthlySales.add(0.0);
             }
@@ -658,22 +604,9 @@ Instant endInstant = endDate.plusDays(1).atStartOfDay(zone).toInstant();
         dailySummaryDTO.put("previusMonthlySales", previusMonthlySales);
 
         /////////////Info para el reporte de LOS 10 PODUCTOS MAS VENDIDOS DEL DIA
-        List<HashMap<String, String>> dailySummaryBestSellingProducts = new ArrayList<>();
-        Object[] dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startDate, endDate);
-        if (dailySummaryBestSellingItems != null) {
-            for (int i = 0; i < dailySummaryBestSellingItems.length; i++) {
-                Object[] dailySummaryBestSellingItemsV = (Object[]) dailySummaryBestSellingItems[i];
-                HashMap<String, String> bestSellingProducts = new HashMap<>();
-                bestSellingProducts.put("name", objectToString(dailySummaryBestSellingItemsV[4]));
-                bestSellingProducts.put("quantity", objectToString(dailySummaryBestSellingItemsV[1]));
-                bestSellingProducts.put("totalAmount", objectToString(dailySummaryBestSellingItemsV[2]));
-                bestSellingProducts.put("benefit", objectToString(dailySummaryBestSellingItemsV[3]));
-                bestSellingProducts.put("category", objectToString(dailySummaryBestSellingItemsV[6]));
-                bestSellingProducts.put("cost", objectToString(dailySummaryBestSellingItemsV[5]));
-                dailySummaryBestSellingProducts.add(bestSellingProducts);
-            }
-        }
-        dailySummaryDTO.put("bestSellingProducts", dailySummaryBestSellingProducts);
+        List<BestSellingItemProjection> dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startDate, endDate);
+        
+        dailySummaryDTO.put("bestSellingProducts", dailySummaryBestSellingItems);
         return new ResponseEntity<>(dailySummaryDTO, HttpStatus.OK);
     }
 

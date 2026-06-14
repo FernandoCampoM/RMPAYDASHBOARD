@@ -9,10 +9,13 @@ import com.retailmanager.rmpaydashboard.models.Interface.LaborMetricsProjection;
 import com.retailmanager.rmpaydashboard.models.Interface.ShiftTransactionProjection;
 import com.retailmanager.rmpaydashboard.models.Interface.TransactionDetailProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BestSellingCategoryProjection;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BestSellingItemByCategoryProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BestSellingItemProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.CategoryNetSalesProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySummaryProjection;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.MonthlySummaryProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.PaymentNetProjection;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.TaxesProjection;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.UserTipsReportProjection;
 
 import org.springframework.data.jpa.repository.Query;
@@ -180,7 +183,15 @@ public interface SaleRepository extends CrudRepository<Sale, String> {
             ON s2.saleID = it.saleID
         WHERE s2.saleEndDate BETWEEN :startDate AND :endDate
           AND s2.businessId = :businessId
-    ), 0) AS grossBenefit
+    ), 0) AS grossBenefit,
+    COALESCE((
+    SELECT SUM(e.totalWorkCost)
+    FROM EntryExit e
+    INNER JOIN UsersBusiness ub
+        ON e.userBusinessId = ub.userBusinessId
+    WHERE e.date BETWEEN :startDate AND :endDate
+      AND ub.businessId = :businessId
+), 0) AS totalWorkCost
 
 FROM Sale s
 WHERE s.saleEndDate BETWEEN :startDate AND :endDate
@@ -240,10 +251,24 @@ List<PaymentNetProjection> getBestPaymentTypes(
             " ( SELECT sum(e.totalWorkCost) FROM [RMPAY].[dbo].[EntryExit] e inner join [RMPAY].[dbo].[UsersBusiness] ub on e.userBusinessId=ub.userBusinessId where year(e.date) = :year and ub.businessId=:businessId) as totalWorkCost", nativeQuery = true)
     public Object[] annualSummary(Long businessId, int year);
 
-    @Query(value = " SELECT \r\n" +
-            "  (SELECT sum(saleTotalAmount) \r\n" +
-            "  FROM [RMPAY].[dbo].[Sale] where CAST(saleEndDate AS DATE) = :fecha AND saleTransactionType='SALE'AND saleStatus='SUCCEED' and businessId=:businessId ) as totalSales", nativeQuery = true)
-    public Object[] monthlySummary(Long businessId, LocalDate fecha);
+    @Query(value = """
+    SELECT
+        COALESCE(SUM(
+            CASE
+                WHEN saleTransactionType = 'SALE'
+                    THEN saleTotalAmount
+                WHEN saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+                    THEN -saleTotalAmount
+                ELSE 0
+            END
+        ), 0) AS totalSales
+    FROM Sale
+    WHERE CAST(saleEndDate AS DATE) = :fecha
+      AND businessId = :businessId
+    """, nativeQuery = true)
+MonthlySummaryProjection monthlySummary(
+        Long businessId,
+        LocalDate fecha);
 
     /**
      * Generate daily summary for a specific category.
@@ -299,14 +324,75 @@ List<CategoryNetSalesProjection> summaryForCategory(
      * @param businessId identificador del negocio
      * @return
      */
-    @Query(value = "SELECT productId, sum(it.quantity) as quantity,sum(it.quantity*it.price) as totalAmount, sum(it.grossProfit) as profit, (select top(1) name from [RMPAY].[dbo].[ItemForSale] ift where ift.productId=it.productId) as name,  it.price,  it.category " + //
-            "  FROM [RMPAY].[dbo].[ItemForSale] it join [RMPAY].[dbo].[Sale] s on it.saleID=s.saleID  \r\n" + //
-            "  where CAST(s.saleEndDate AS DATE) BETWEEN :startDate AND :endDate and s.businessId=:businessId \r\n" +
-            "  AND saleTransactionType = 'SALE' AND saleStatus = 'SUCCEED' " + //
-            "  group by productId,  it.category,  it.price " + //
-            "  order by sum(it.quantity) desc ", nativeQuery = true)
-    public Object[] dailySummaryBestSellingItems(Long businessId, LocalDate startDate, LocalDate endDate);
+    @Query(value = """
+    SELECT
+        it.productId AS productId,
 
+        COALESCE(SUM(
+            CASE
+                WHEN s.saleTransactionType = 'SALE'
+                    THEN it.quantity
+                WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+                    THEN -it.quantity
+                ELSE 0
+            END
+        ), 0) AS quantity,
+
+        COALESCE(SUM(
+            CASE
+                WHEN s.saleTransactionType = 'SALE'
+                    THEN (it.quantity * it.price)
+                WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+                    THEN -(it.quantity * it.price)
+                ELSE 0
+            END
+        ), 0) AS totalAmount,
+
+        COALESCE(SUM(
+            CASE
+                WHEN s.saleTransactionType = 'SALE'
+                    THEN it.cost
+                WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+                    THEN -it.cost
+                ELSE 0
+            END
+        ), 0) AS cost,
+
+        COALESCE(SUM(
+            CASE
+                WHEN s.saleTransactionType = 'SALE'
+                    THEN it.grossProfit
+                WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+                    THEN -it.grossProfit
+                ELSE 0
+            END
+        ), 0) AS benefit,
+
+        MAX(it.name) AS name,
+
+        it.price AS price,
+
+        it.category AS category
+
+    FROM ItemForSale it
+    INNER JOIN Sale s
+        ON it.saleID = s.saleID
+
+    WHERE CAST(s.saleEndDate AS DATE)
+            BETWEEN :startDate AND :endDate
+      AND s.businessId = :businessId
+
+    GROUP BY
+        it.productId,
+        it.category,
+        it.price
+
+    ORDER BY quantity DESC
+    """, nativeQuery = true)
+List<BestSellingItemProjection> dailySummaryBestSellingItems(
+        Long businessId,
+        LocalDate startDate,
+        LocalDate endDate);
     @Query(value = """
 SELECT
     it.productId AS productId,
@@ -396,9 +482,79 @@ List<BestSellingItemProjection> dailySummaryBestSellingItems(
     @Query(value = "select i from ItemForSale i where i.sale.business.businessId=:businessId and i.sale.saleEndDate between :startDate and :endDate order by i.quantity desc")
     List<ItemForSale> getBestSellingItems(Long businessId, LocalDateTime startDate, LocalDateTime endDate);
 
-    @Query(value = "select i from ItemForSale i where i.sale.business.businessId=:businessId and i.sale.saleEndDate >= :startDate and i.sale.saleEndDate < :endDate order by i.quantity desc")
-    List<ItemForSale> getBestSellingItems(Long businessId, Instant startDate, Instant endDate);
+    @Query(value = """
+SELECT
 
+    i.productId AS productId,
+    i.barcode AS barcode,
+    i.name AS name,
+    i.code AS code,
+    i.category AS category,
+
+    MAX(i.price) AS price,
+    MAX(i.cost) AS cost,
+
+    COALESCE(SUM(
+        CASE
+            WHEN s.saleTransactionType = 'SALE'
+                THEN i.quantity
+            WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+                THEN -i.quantity
+            ELSE 0
+        END
+    ),0) AS quantity,
+
+    COALESCE(SUM(
+        CASE
+            WHEN s.saleTransactionType = 'SALE'
+                THEN i.quantity * i.price
+            WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+                THEN -(i.quantity * i.price)
+            ELSE 0
+        END
+    ),0) AS totalAmount,
+
+    COALESCE(SUM(
+        CASE
+            WHEN s.saleTransactionType = 'SALE'
+                THEN i.grossProfit
+            WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+                THEN -i.grossProfit
+            ELSE 0
+        END
+    ),0) AS profit
+
+FROM ItemForSale i
+INNER JOIN Sale s
+    ON i.saleID = s.saleID
+
+WHERE s.businessId = :businessId
+  AND s.saleEndDate >= :startDate
+  AND s.saleEndDate < :endDate
+
+GROUP BY
+    i.productId,
+    i.barcode,
+    i.name,
+    i.code,
+    i.category
+
+HAVING COALESCE(SUM(
+    CASE
+        WHEN s.saleTransactionType = 'SALE'
+            THEN i.quantity
+        WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+            THEN -i.quantity
+        ELSE 0
+    END
+),0) > 0
+
+ORDER BY quantity DESC
+""", nativeQuery = true)
+List<BestSellingItemByCategoryProjection> getBestSellingItems(
+        Long businessId,
+        Instant startDate,
+        Instant endDate);
     /**
      * Retrieves the best selling items by category within a specified date range for a given business.
      *
@@ -411,9 +567,84 @@ List<BestSellingItemProjection> dailySummaryBestSellingItems(
     @Query(value = "select i from ItemForSale i where i.sale.business.businessId=:businessId and i.sale.saleEndDate between :startDate and :endDate  and i.category=:category order by i.quantity desc")
     List<ItemForSale> getBestSellingItemsByCategory(Long businessId, LocalDateTime startDate, LocalDateTime endDate, String category);
 
-    @Query(value = "select i from ItemForSale i where i.sale.business.businessId=:businessId and i.sale.saleEndDate >= :startDate and i.sale.saleEndDate < :endDate  and i.category=:category order by i.quantity desc")
-    List<ItemForSale> getBestSellingItemsByCategory(Long businessId, Instant startDate, Instant endDate, String category);
+    @Query(value = """
+SELECT
 
+    i.productId AS productId,
+    MAX(i.barcode) AS barcode,
+    MAX(i.name) AS name,
+    MAX(i.code) AS code,
+    MAX(i.category) AS category,
+    MAX(i.price) AS price,
+    MAX(i.cost) AS cost,
+
+    COALESCE(SUM(
+        CASE
+            WHEN s.saleTransactionType = 'SALE'
+                THEN i.quantity
+            WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+                THEN -i.quantity
+            ELSE 0
+        END
+    ),0) AS quantity,
+
+    COALESCE(SUM(
+        CASE
+            WHEN s.saleTransactionType = 'SALE'
+                THEN i.quantity * i.price
+            WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+                THEN -(i.quantity * i.price)
+            ELSE 0
+        END
+    ),0) AS totalAmount,
+
+    COALESCE(SUM(
+        CASE
+            WHEN s.saleTransactionType = 'SALE'
+                THEN i.grossProfit
+            WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+                THEN -i.grossProfit
+            ELSE 0
+        END
+    ),0) AS profit
+
+FROM ItemForSale i
+INNER JOIN Sale s
+    ON i.saleID = s.saleID
+
+WHERE s.businessId = :businessId
+  AND s.saleEndDate >= :startDate
+  AND s.saleEndDate < :endDate
+  AND i.category = :category
+
+  AND (
+        (s.saleTransactionType = 'SALE'
+         AND s.saleStatus = 'SUCCEED')
+
+        OR
+
+        (s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID'))
+      )
+
+GROUP BY i.productId
+
+HAVING COALESCE(SUM(
+    CASE
+        WHEN s.saleTransactionType = 'SALE'
+            THEN i.quantity
+        WHEN s.saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+            THEN -i.quantity
+        ELSE 0
+    END
+),0) > 0
+
+ORDER BY quantity DESC
+""", nativeQuery = true)
+List<BestSellingItemByCategoryProjection> getBestSellingItemsByCategory(
+        Long businessId,
+        Instant startDate,
+        Instant endDate,
+        String category);
     @Query(value = "select Category, count(productId) as totalQuantity, sum(s.saleSubtotal) as totalAmount, sum(ifs.cost) as cost, sum(ifs.grossProfit) as grossProfit\r\n" + //
             "  from [RMPAY].[dbo].[ItemForSale] ifs inner join [RMPAY].[dbo].[Sale] s on ifs.saleID=s.saleID  \r\n" + //
             "  where s.businessId=:businessId and s.saleEndDate between :startDate and :endDate " +
@@ -476,7 +707,79 @@ ORDER BY totalQuantity DESC;
 
     @Query(value = "select s from Sale s where s.business.businessId=:businessId and s.saleEndDate >= :startDate and s.saleEndDate < :endDate and s.saleStatus='SUCCEED'")
     public List<Sale> getSalesByDateRange(Long businessId, Instant startDate, Instant endDate);
+    @Query(value = """
+SELECT
 
+COALESCE(SUM(
+    CASE
+        WHEN saleTransactionType = 'SALE'
+            THEN (saleStateTaxAmount + saleCityTaxAmount + saleReduceTax)
+        WHEN saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+            THEN -(saleStateTaxAmount + saleCityTaxAmount + saleReduceTax)
+        ELSE 0
+    END
+),0) AS totalTax,
+
+COALESCE(SUM(
+    CASE
+        WHEN saleTransactionType = 'SALE'
+            THEN saleTotalAmount
+        WHEN saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+            THEN -saleTotalAmount
+        ELSE 0
+    END
+),0) AS totalSales,
+
+COALESCE(SUM(
+    CASE
+        WHEN saleTransactionType = 'SALE'
+            THEN saleStateTaxAmount
+        WHEN saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+            THEN -saleStateTaxAmount
+        ELSE 0
+    END
+),0) AS totalStatalTax,
+
+COALESCE(SUM(
+    CASE
+        WHEN saleTransactionType = 'SALE'
+            THEN saleCityTaxAmount
+        WHEN saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+            THEN -saleCityTaxAmount
+        ELSE 0
+    END
+),0) AS totalCityTax,
+
+COALESCE(SUM(
+    CASE
+        WHEN saleTransactionType = 'SALE'
+            THEN saleReduceTax
+        WHEN saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+            THEN -saleReduceTax
+        ELSE 0
+    END
+),0) AS totalReduceTax,
+
+COALESCE(SUM(
+    CASE
+        WHEN saleTransactionType = 'SALE'
+            THEN (saleTotalAmount - saleStateTaxAmount - saleCityTaxAmount - saleReduceTax)
+        WHEN saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+            THEN -(saleTotalAmount - saleStateTaxAmount - saleCityTaxAmount - saleReduceTax)
+        ELSE 0
+    END
+),0) AS totalTaxableSales
+
+FROM Sale
+WHERE businessId = :businessId
+  AND saleEndDate >= :startDate
+  AND saleEndDate < :endDate
+  AND saleStatus = 'SUCCEED'
+""", nativeQuery = true)
+TaxesProjection getTaxes(
+        Long businessId,
+        Instant startDate,
+        Instant endDate);    
     @Query(value = "SELECT s.userId, ub.username, sum(s.saleTotalAmount) as totalSales, \r\n" + //
             "sum(s.saleSubtotal) as subTotalSales, sum(s.tipAmount) as tipAmount, \r\n" + //
             "(SELECT sum(grossProfit)\r\n" + //

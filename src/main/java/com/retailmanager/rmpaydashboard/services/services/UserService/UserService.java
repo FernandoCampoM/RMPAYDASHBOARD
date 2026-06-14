@@ -382,6 +382,7 @@ public class UserService implements IUserService {
                 return new ResponseEntity<String>(msgError, HttpStatus.BAD_REQUEST);
             }
             if (prmRegistry.getAdditionalTerminals() != null && prmRegistry.getAdditionalTerminals() != 0) {
+                
                 Optional<Service> optional = this.serviceDBService.findById(prmRegistry.getServiceId());
                 if (!optional.isPresent()) {
                     EntidadNoExisteException objExeption = new EntidadNoExisteException("El Servicio con serviceId " + prmRegistry.getServiceId() + " no existe en la Base de datos");

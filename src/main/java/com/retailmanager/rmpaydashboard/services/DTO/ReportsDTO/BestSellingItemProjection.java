@@ -4,13 +4,15 @@ public interface BestSellingItemProjection {
 
     Long getProductId();
 
-    String getName();
-
     Long getQuantity();
 
     Double getTotalAmount();
 
+    Double getCost();
+
     Double getBenefit();
+
+    String getName();
 
     Double getPrice();
 

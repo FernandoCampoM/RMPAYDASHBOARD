@@ -22,4 +22,5 @@ public interface DailySummaryProjection {
 
     // PROFIT
     BigDecimal getGrossBenefit();
+    BigDecimal getTotalWorkCost();
 }
