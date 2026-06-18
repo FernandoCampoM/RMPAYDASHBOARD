@@ -45,6 +45,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.Instant;
@@ -129,6 +130,8 @@ public class ReportService implements IReportService {
         
        List<CategoryNetSalesProjection>  dailySummaryByCategory = this.serviceDBSale.summaryForCategory(businessId, startUtc, endUtc);
         dailySummaryDTO.setSalesByCategory(dailySummaryByCategory);
+        List<CategoryNetSalesProjection>  earningsByCategory = this.serviceDBSale.earningsForCategory(businessId, startUtc, endUtc);
+        dailySummaryDTO.setEarningsByCategory(earningsByCategory);
        List<BestSellingItemProjection> dailySummaryBestSellingItems = this.serviceDBSale.dailySummaryBestSellingItems(businessId, startUtc, endUtc);
         dailySummaryDTO.setBestSellingProducts(dailySummaryBestSellingItems);
         return new ResponseEntity<>(dailySummaryDTO, HttpStatus.OK);
@@ -306,7 +309,7 @@ public class ReportService implements IReportService {
         
             dailySummaryDTO.setEstimatedRedTax(dailySummary.getRedTaxSales().subtract(dailySummary.getRedTaxRefund()));
         
-            dailySummaryDTO.setSubTotalSales(dailySummary.getSubTotalSales());
+            dailySummaryDTO.setSubTotalSales(dailySummary.getSubTotalSales().subtract(dailySummary.getSubTotalRefund()));
             dailySummaryDTO.setBenefit(dailySummary.getGrossBenefit());
            
         List<BestSellingCategoryProjection> salesByCategory = this.serviceDBSale.getBestSellingItemsXCategory(businessId, startUtc, endUtc);
@@ -343,7 +346,7 @@ public class ReportService implements IReportService {
 
             dailySummaryDTO.setTotalSales(dailySummary.getTotalSales().subtract(dailySummary.getTotalRefund()));
         
-            dailySummaryDTO.setSubTotalSales(dailySummary.getSubTotalSales());
+            dailySummaryDTO.setSubTotalSales(dailySummary.getSubTotalSales().subtract(dailySummary.getSubTotalRefund()));
             dailySummaryDTO.setTotalTips(dailySummary.getTotalTips().subtract(dailySummary.getTotalTipsRefund()));
 
         dailySummaryDTO.setUserTips(new ArrayList<>());
@@ -514,7 +517,7 @@ Instant endInstant = endDate.plusDays(1).atStartOfDay(zone).toInstant();
         
         HashMap<String, Object> annualSummaryDTO = new HashMap<>();
         
-            
+                
                 BigDecimal totalSales = annualSummary.getSubTotalSales().subtract(annualSummary.getSubTotalRefund());
                 annualSummaryDTO.put("totalSales", totalSales);
                 BigDecimal totalSalesBefore = annualSummarybefore.getSubTotalSales().subtract(annualSummarybefore.getSubTotalRefund());
@@ -553,8 +556,24 @@ Instant endInstant = endDate.plusDays(1).atStartOfDay(zone).toInstant();
                     annualSummaryDTO.put("grossProfitStatus", 0);
                 }
 
-           
-            
+                BigDecimal margin=BigDecimal.ZERO;
+                if(totalSales.compareTo(BigDecimal.ZERO)>0){
+                    margin=grossProfit.divide(totalSales,4, RoundingMode.HALF_UP ).multiply(BigDecimal.valueOf(100));
+                }
+                BigDecimal marginBefore=BigDecimal.ZERO;
+                if(totalSalesBefore.compareTo(BigDecimal.ZERO)>0){
+                    marginBefore=grossProfitBefore.divide(totalSalesBefore,4, RoundingMode.HALF_UP ).multiply(BigDecimal.valueOf(100));
+                }
+                annualSummaryDTO.put("marginYTD", margin.stripTrailingZeros());
+                annualSummaryDTO.put("marginLY", marginBefore.stripTrailingZeros());
+                if(margin.compareTo(marginBefore)>0){
+                    annualSummaryDTO.put("marginStatus", 1);
+                }else if(margin.compareTo(marginBefore)<0){
+                    annualSummaryDTO.put("marginStatus", -1);
+                }else{
+                    annualSummaryDTO.put("marginStatus", 0);
+                }
+
                 BigDecimal totalWorkCost = annualSummary.getTotalWorkCost() ;
                 annualSummaryDTO.put("totalWorkCost", totalWorkCost);
                 BigDecimal totalWorkCostBefore = annualSummarybefore.getTotalWorkCost() ;

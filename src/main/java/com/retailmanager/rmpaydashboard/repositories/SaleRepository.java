@@ -195,31 +195,44 @@ public interface SaleRepository extends CrudRepository<Sale, String> {
 
 FROM Sale s
 WHERE s.saleEndDate BETWEEN :startDate AND :endDate
-  AND s.businessId = :businessId;
+  AND s.businessId = :businessId 
     """,
     nativeQuery = true)
 DailySummaryProjection dailySummary(
-        @Param("businessId") Long businessId,
-        @Param("startDate") Instant startDate,
-        @Param("endDate") Instant endDate);
+         Long businessId,
+         Instant startDate,
+         Instant endDate);
 
 
         @Query(value = """
 SELECT
-    t.paymentType AS paymentType,
+    t.paymentType,
+
     COALESCE(SUM(
-        CASE 
-            WHEN s.saleTransactionType = 'SALE' THEN t.amount
-            WHEN s.saleTransactionType IN ('PARTIAL_REFUND', 'REFUND', 'VOID') THEN -t.amount
+        CASE
+            WHEN s.saleTransactionType = 'SALE' THEN
+                (t.amount / NULLIF(s.saleTotalAmount,0))
+                * s.saleSubtotal
+
+            WHEN s.saleTransactionType IN ('PARTIAL_REFUND','REFUND','VOID') THEN
+                -(
+                    (t.amount / NULLIF(s.saleTotalAmount,0))
+                    * s.saleSubtotal
+                )
+
             ELSE 0
         END
-    ), 0) AS totalAmount
+    ),0) AS totalAmount
+
 FROM Transactions t
 INNER JOIN Sale s
     ON s.saleID = t.saleID
-WHERE s.saleStatus = 'SUCCEED'
-  AND s.businessId = :businessId
-  AND s.saleEndDate BETWEEN :startDate AND :endDate
+
+WHERE s.businessId = :businessId
+  AND s.saleStatus = 'SUCCEED'
+  AND s.saleEndDate >= :startDate
+  AND s.saleEndDate < :endDate
+
 GROUP BY t.paymentType
 ORDER BY totalAmount DESC;
 """, nativeQuery = true)
@@ -298,8 +311,8 @@ MonthlySummaryProjection monthlySummary(
     it.category AS category,
     COALESCE(SUM(
         CASE 
-            WHEN s.saleTransactionType = 'SALE' THEN s.saleTotalAmount
-            WHEN s.saleTransactionType IN ('PARTIAL_REFUND','REFUND','VOID') THEN -s.saleTotalAmount
+            WHEN s.saleTransactionType = 'SALE' THEN quantity*price
+            WHEN s.saleTransactionType IN ('PARTIAL_REFUND','REFUND','VOID') THEN -quantity*price
             ELSE 0
         END
     ), 0) AS totalAmount
@@ -313,6 +326,31 @@ GROUP BY it.category
 ORDER BY totalAmount DESC;
 """, nativeQuery = true)
 List<CategoryNetSalesProjection> summaryForCategory(
+    @Param("businessId") Long businessId,
+    @Param("startUtc") Instant startUtc,
+    @Param("endUtc") Instant endUtc
+);
+
+ @Query(value = """
+    SELECT 
+    it.category AS category,
+    COALESCE(SUM(
+        CASE 
+            WHEN s.saleTransactionType = 'SALE' THEN it.grossProfit
+            WHEN s.saleTransactionType IN ('PARTIAL_REFUND','REFUND','VOID') THEN -it.grossProfit
+            ELSE 0
+        END
+    ), 0) AS totalAmount
+FROM [RMPAY].[dbo].[ItemForSale] it 
+JOIN [RMPAY].[dbo].[Sale] s 
+    ON it.saleID = s.saleID
+WHERE s.saleEndDate >= :startUtc 
+  AND s.saleEndDate < :endUtc 
+  AND s.businessId = :businessId
+GROUP BY it.category
+ORDER BY totalAmount DESC;
+""", nativeQuery = true)
+List<CategoryNetSalesProjection> earningsForCategory(
     @Param("businessId") Long businessId,
     @Param("startUtc") Instant startUtc,
     @Param("endUtc") Instant endUtc
@@ -394,10 +432,18 @@ List<BestSellingItemProjection> dailySummaryBestSellingItems(
         LocalDate startDate,
         LocalDate endDate);
     @Query(value = """
-SELECT
+ SELECT
     it.productId AS productId,
 
-    SUM(it.quantity) AS quantity,
+    COALESCE(SUM(
+    CASE
+        WHEN s.saleTransactionType = 'SALE'
+            THEN it.quantity
+        WHEN s.saleTransactionType IN ('PARTIAL_REFUND','REFUND','VOID')
+            THEN -it.quantity
+        ELSE 0
+    END
+), 0) AS quantity,
 
     COALESCE(SUM(
         CASE
@@ -432,7 +478,6 @@ INNER JOIN Sale s
 WHERE s.saleEndDate >= :startDate
   AND s.saleEndDate < :endDate
   AND s.businessId = :businessId
-  AND s.saleStatus = 'SUCCEED'
 
 GROUP BY
     it.productId,
@@ -618,8 +663,7 @@ WHERE s.businessId = :businessId
   AND i.category = :category
 
   AND (
-        (s.saleTransactionType = 'SALE'
-         AND s.saleStatus = 'SUCCEED')
+        (s.saleTransactionType = 'SALE')
 
         OR
 
@@ -656,7 +700,15 @@ List<BestSellingItemByCategoryProjection> getBestSellingItemsByCategory(
          SELECT
     ifs.category AS category,
 
-    COUNT(ifs.productId) AS TotalItems,
+    COALESCE(SUM(
+    CASE
+        WHEN s.saleTransactionType = 'SALE'
+            THEN ifs.quantity
+        WHEN s.saleTransactionType IN ('PARTIAL_REFUND','REFUND','VOID')
+            THEN -ifs.quantity
+        ELSE 0
+    END
+), 0) AS TotalItems,
 
     COALESCE(SUM(
         CASE
@@ -692,12 +744,12 @@ FROM ItemForSale ifs
 INNER JOIN Sale s
     ON ifs.saleID = s.saleID
 
-WHERE s.businessId = 40031
-  AND s.saleEndDate BETWEEN '2026-05-01' AND '2026-06-01' 
+WHERE s.businessId = :businessId
+  AND s.saleEndDate BETWEEN :startDate AND :endDate
 
 GROUP BY ifs.category
 
-ORDER BY totalQuantity DESC; 
+ORDER BY TotalItems DESC; 
 
         """, nativeQuery = true)
     List<BestSellingCategoryProjection> getBestSellingItemsXCategory(Long businessId, Instant startDate, Instant endDate);
@@ -729,6 +781,15 @@ COALESCE(SUM(
         ELSE 0
     END
 ),0) AS totalSales,
+COALESCE(SUM(
+    CASE
+        WHEN saleTransactionType = 'SALE'
+            THEN saleSubtotal
+        WHEN saleTransactionType IN ('REFUND','PARTIAL_REFUND','VOID')
+            THEN -saleSubtotal
+        ELSE 0
+    END
+),0) AS subTotalSales,
 
 COALESCE(SUM(
     CASE
@@ -850,7 +911,6 @@ LEFT JOIN UsersBusiness ub
 WHERE s.saleEndDate >= :startDate
   AND s.saleEndDate < :endDate
   AND s.businessId = :businessId
-  AND s.saleStatus = 'SUCCEED'
 
 GROUP BY s.userId, ub.username
 """, nativeQuery = true)

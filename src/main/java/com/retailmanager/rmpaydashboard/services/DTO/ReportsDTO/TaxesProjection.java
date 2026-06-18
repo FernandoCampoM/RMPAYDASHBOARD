@@ -5,6 +5,7 @@ public interface TaxesProjection {
     Double getTotalTax();
 
     Double getTotalSales();
+    Double getSubTotalSales();
 
     Double getTotalStatalTax();
 

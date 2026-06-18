@@ -50,7 +50,7 @@ public class SaleService implements ISaleService {
     @Override
     @Transactional
     public ResponseEntity<?> addSale(SaleDTO saleDTO) {
-
+        
         Business business = this.serviceDBBusiness.findById(saleDTO.getBusinessId()).orElse(null);
         Terminal terminal = this.serviceDBTerminal.findById(saleDTO.getTerminalId()).get();
         if (this.serviceDBSale.existsById(saleDTO.getSaleID())) {

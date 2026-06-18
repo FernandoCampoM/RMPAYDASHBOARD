@@ -21,6 +21,7 @@ public class DailySummaryDTO {
     private BigDecimal municipalTax = BigDecimal.ZERO;
     //retorna una lista de objetos category, totalAmount
     List<CategoryNetSalesProjection> salesByCategory= new ArrayList<>();
+    List<CategoryNetSalesProjection> earningsByCategory= new ArrayList<>();
     //retorna una lista de objetos name, quantity, totalAmount, benefit
     List<BestSellingItemProjection> bestSellingProducts= new ArrayList<>();
     private List<PaymentNetProjection> bestSellingPayMethods= new ArrayList<>();
