@@ -212,6 +212,26 @@ private final ShiftController shiftController;
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getRecentTransactionsByMerchantId(String merchantId, String terminalId, int days) {
+        if(!this.businessRepository.findOneByMerchantId(merchantId).isPresent()) {
+            throw new EntidadNoExisteException("El negocio con merchantId " + merchantId + " no existe en la base de datos");
+        }
+
+        int safeDays = Math.max(days, 1);
+        Instant startDate = Instant.now().minusSeconds(safeDays * 86400L);
+        List<Transactions> transactions;
+        if (terminalId != null && !terminalId.isEmpty()) {
+            transactions = this.transactionsRepository.getRecentTransactionsByMerchantIdAndTerminalId(merchantId, terminalId, startDate);
+        } else {
+            transactions = this.transactionsRepository.getRecentTransactionsByMerchantId(merchantId, startDate);
+        }
+
+        List<TransactionDTO> transactionDTOs = transactions.stream().map(TransactionDTO::fromTransactions).collect(Collectors.toList());
+        return new ResponseEntity<>(transactionDTOs, HttpStatus.OK);
+    }
+
+    @Override
     @Transactional
     public ResponseEntity<?> updateStatus(String transactionId, String status) {
         

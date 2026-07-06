@@ -67,6 +67,17 @@ public interface SaleRepository extends CrudRepository<Sale, String> {
     @Query("SELECT s FROM Sale s WHERE s.terminal.terminalId = :terminalId AND s.business.merchantId = :merchantId")
     public List<Sale> findByMerchantIdAndTerminalId(String terminalId, String merchantId);
 
+    @Query("SELECT s FROM Sale s WHERE s.business.merchantId = :merchantId " +
+            "AND (s.saleCreationDate >= :startDate OR s.saleEndDate >= :startDate) " +
+            "ORDER BY s.saleCreationDate DESC")
+    public List<Sale> findRecentByMerchantId(@Param("merchantId") String merchantId, @Param("startDate") Instant startDate);
+
+    @Query("SELECT s FROM Sale s WHERE s.terminal.terminalId = :terminalId " +
+            "AND s.business.merchantId = :merchantId " +
+            "AND (s.saleCreationDate >= :startDate OR s.saleEndDate >= :startDate) " +
+            "ORDER BY s.saleCreationDate DESC")
+    public List<Sale> findRecentByMerchantIdAndTerminalId(@Param("merchantId") String merchantId, @Param("terminalId") String terminalId, @Param("startDate") Instant startDate);
+
     /**
      * Obtiene las ventas entre dos fechas y por tipo de transacción y estado e identificador de comercio.
      *

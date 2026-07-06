@@ -79,6 +79,14 @@ public class TransactionsController {
         return transactionService.getTransactionsByMerchantId(merchantId, startDateTime, endDateTime);
     }
 
+    @GetMapping("/merchant/{merchantId}/recent")
+    public ResponseEntity<?> getRecentTransactionsByMerchantId(
+            @Valid @PathVariable @NotBlank(message = "El merchantId no puede estar vacÃ­o") String merchantId,
+            @RequestParam(required=false) String terminalId,
+            @RequestParam(defaultValue = "2") int days) {
+        return transactionService.getRecentTransactionsByMerchantId(merchantId, terminalId, days);
+    }
+
     /**
      * Get transactions by businessId within a date range.
      *

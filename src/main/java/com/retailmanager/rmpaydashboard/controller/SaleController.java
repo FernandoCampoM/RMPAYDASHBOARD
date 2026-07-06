@@ -53,6 +53,13 @@ public class SaleController {
         return saleService.getAllSales(merchantId);
     }
 
+    @GetMapping("/sales/recent")
+    public ResponseEntity<?> getRecentSales(@RequestParam(name = "merchantId") @Valid String merchantId,
+                                            @RequestParam(required = false) String terminalId,
+                                            @RequestParam(defaultValue = "2") int days) {
+        return saleService.getRecentSales(merchantId, terminalId, days);
+    }
+
     /**
      * Retrieves completed sales for a specific merchant.
      *

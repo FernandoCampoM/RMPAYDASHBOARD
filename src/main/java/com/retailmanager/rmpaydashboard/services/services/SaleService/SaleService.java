@@ -278,6 +278,30 @@ public class SaleService implements ISaleService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getRecentSales(String merchantId, String terminalId, int days) {
+        Business business = this.serviceDBBusiness.findOneByMerchantId(merchantId).orElse(null);
+        if (business == null) {
+            throw new EntidadNoExisteException("El Business con merchantId " + merchantId + " no existe en la Base de datos");
+        }
+
+        int safeDays = Math.max(days, 1);
+        Instant startDate = Instant.now().minusSeconds(safeDays * 86400L);
+        List<Sale> sales;
+        if (terminalId != null && !terminalId.isEmpty()) {
+            sales = this.serviceDBSale.findRecentByMerchantIdAndTerminalId(merchantId, terminalId, startDate);
+        } else {
+            sales = this.serviceDBSale.findRecentByMerchantId(merchantId, startDate);
+        }
+
+        List<SaleDTO> salesDTO = sales.stream()
+                .map(SaleDTO::fromEntity)
+                .collect(Collectors.toList());
+
+        return new ResponseEntity<List<SaleDTO>>(salesDTO, HttpStatus.OK);
+    }
+
+    @Override
     @Transactional
     public ResponseEntity<?> UpdateStatus(String saleId, String status) {
 

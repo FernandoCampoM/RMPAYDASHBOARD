@@ -15,6 +15,7 @@ public interface ITransactionService {
     public ResponseEntity<?> saveTransactions(List<TransactionDTO> transactionDTOs);
     public ResponseEntity<?> getTransactionsByMerchantId(String merchantId, LocalDateTime startDate, LocalDateTime endDate);
     public ResponseEntity<?> getTransactionsByMerchantId(String merchantId, String terminalId, LocalDateTime startDate, LocalDateTime endDate);
+    public ResponseEntity<?> getRecentTransactionsByMerchantId(String merchantId, String terminalId, int days);
     public ResponseEntity<?> getTransactionsByBusinessId(Long businessId, LocalDateTime startDate, LocalDateTime endDate);
     public ResponseEntity<?> getTransactionById(String id);
     public ResponseEntity<?> getTransactionDetails(
