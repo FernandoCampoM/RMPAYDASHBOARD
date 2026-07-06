@@ -11,6 +11,10 @@ import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -228,6 +232,30 @@ private final ShiftController shiftController;
         }
 
         List<TransactionDTO> transactionDTOs = transactions.stream().map(TransactionDTO::fromTransactions).collect(Collectors.toList());
+        return new ResponseEntity<>(transactionDTOs, HttpStatus.OK);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getRecentTransactionsByMerchantId(String merchantId, String terminalId, int days, int page, int size) {
+        if(!this.businessRepository.findOneByMerchantId(merchantId).isPresent()) {
+            throw new EntidadNoExisteException("El negocio con merchantId " + merchantId + " no existe en la base de datos");
+        }
+
+        int safeDays = Math.max(days, 1);
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 500);
+        Instant startDate = Instant.now().minusSeconds(safeDays * 86400L);
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "date"));
+
+        Page<Transactions> transactions;
+        if (terminalId != null && !terminalId.isEmpty()) {
+            transactions = this.transactionsRepository.getRecentTransactionsByMerchantIdAndTerminalId(merchantId, terminalId, startDate, pageable);
+        } else {
+            transactions = this.transactionsRepository.getRecentTransactionsByMerchantId(merchantId, startDate, pageable);
+        }
+
+        Page<TransactionDTO> transactionDTOs = transactions.map(TransactionDTO::fromTransactions);
         return new ResponseEntity<>(transactionDTOs, HttpStatus.OK);
     }
 

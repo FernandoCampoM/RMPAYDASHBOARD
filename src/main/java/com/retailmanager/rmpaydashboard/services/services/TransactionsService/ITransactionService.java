@@ -16,6 +16,7 @@ public interface ITransactionService {
     public ResponseEntity<?> getTransactionsByMerchantId(String merchantId, LocalDateTime startDate, LocalDateTime endDate);
     public ResponseEntity<?> getTransactionsByMerchantId(String merchantId, String terminalId, LocalDateTime startDate, LocalDateTime endDate);
     public ResponseEntity<?> getRecentTransactionsByMerchantId(String merchantId, String terminalId, int days);
+    public ResponseEntity<?> getRecentTransactionsByMerchantId(String merchantId, String terminalId, int days, int page, int size);
     public ResponseEntity<?> getTransactionsByBusinessId(Long businessId, LocalDateTime startDate, LocalDateTime endDate);
     public ResponseEntity<?> getTransactionById(String id);
     public ResponseEntity<?> getTransactionDetails(
