@@ -15,7 +15,8 @@ public class AutomatedEmailScheduler {
     private AutomatedEmailService automatedEmailService;
 
     @Scheduled(cron = "0 * * * * *")
-    public void runDailySummaryEmailCheck() {
+    public void runAutomatedEmailChecks() {
         automatedEmailService.processDailySummaryEmails();
+        automatedEmailService.processLowInventoryEmails();
     }
 }

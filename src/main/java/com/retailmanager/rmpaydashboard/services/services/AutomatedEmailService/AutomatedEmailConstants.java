@@ -14,6 +14,9 @@ public final class AutomatedEmailConstants {
     public static final String EMAIL_SMTP_PORT_KEY = "Email.smtpPort";
     public static final String DAILY_SUMMARY_ACTIVE_KEY = "Email.DailySummary.active";
     public static final String DAILY_SUMMARY_TIME_KEY = "Email.DailySummary.time";
+    public static final String LOW_INVENTORY_TYPE = "LOW_INVENTORY";
+public static final String DAILY_LOW_INVENTORY_ACTIVE_KEY = "Email.LowInventory.active";
+public static final String DAILY_LOW_INVENTORY_TIME_KEY = "Email.LowInventory.time";
 
     private AutomatedEmailConstants() {
     }

@@ -18,6 +18,7 @@ import com.retailmanager.rmpaydashboard.models.BusinessConfiguration;
 import com.retailmanager.rmpaydashboard.models.AutomatedEmailLog;
 import com.retailmanager.rmpaydashboard.repositories.BusinessConfigurationRepository;
 import com.retailmanager.rmpaydashboard.repositories.AutomatedEmailLogRepository;
+import com.retailmanager.rmpaydashboard.services.DTO.ProductDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySummaryDTO;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
 import com.retailmanager.rmpaydashboard.services.services.ReportsServices.IReportService;
@@ -43,6 +44,8 @@ public class AutomatedEmailService {
 
     @Autowired
     private DailySummaryEmailTemplate dailySummaryEmailTemplate;
+    @Autowired
+private LowInventoryEmailTemplate lowInventoryEmailTemplate;
 
     @Transactional
     public void processDailySummaryEmails() {
@@ -229,4 +232,135 @@ private String getRequiredConfigurationValue(String key, Long businessId) {
         log.setErrorMessage(errorMessage);
         automatedEmailLogRepository.save(log);
     }
+    @Transactional
+public void processLowInventoryEmails() {
+    LocalDateTime serverNow = LocalDateTime.now();
+    LocalTime currentMinute = serverNow.toLocalTime().withSecond(0).withNano(0);
+    LocalDate reportDate = serverNow.toLocalDate();
+
+    List<BusinessConfiguration> activeConfigurations = businessConfigurationRepository.findByConfigKey(
+            AutomatedEmailConstants.DAILY_LOW_INVENTORY_ACTIVE_KEY);
+
+    for (BusinessConfiguration activeConfiguration : activeConfigurations) {
+        Business business = activeConfiguration.getBusiness();
+
+        if (business == null || !business.isEnable() || !isTrue(activeConfiguration.getValue())) {
+            continue;
+        }
+
+        BusinessConfiguration timeConfiguration = businessConfigurationRepository.findByKey(
+                AutomatedEmailConstants.DAILY_LOW_INVENTORY_TIME_KEY,
+                business.getBusinessId());
+
+        LocalTime scheduledTime = parseScheduledTime(timeConfiguration);
+
+        if (scheduledTime == null || currentMinute.isBefore(scheduledTime)) {
+            continue;
+        }
+
+        sendLowInventoryIfPending(business, reportDate, scheduledTime);
+    }
+}
+private void sendLowInventoryIfPending(Business business, LocalDate reportDate, LocalTime scheduledTime) {
+    boolean alreadySent = automatedEmailLogRepository.existsByBusiness_BusinessIdAndEmailTypeAndReportDate(
+            business.getBusinessId(),
+            AutomatedEmailConstants.LOW_INVENTORY_TYPE,
+            reportDate
+    );
+
+    if (alreadySent) {
+        return;
+    }
+
+    try {
+        Long businessId = business.getBusinessId();
+
+        String smtpHost = getRequiredConfigurationValue(
+                AutomatedEmailConstants.EMAIL_SMTP_HOST_KEY,
+                businessId
+        );
+
+        int smtpPort = getRequiredConfigurationIntValue(
+                AutomatedEmailConstants.EMAIL_SMTP_PORT_KEY,
+                businessId
+        );
+
+        String smtpUsername = getRequiredConfigurationValue(
+                AutomatedEmailConstants.EMAIL_FROM_KEY,
+                businessId
+        );
+
+        String smtpPassword = getRequiredConfigurationValue(
+                AutomatedEmailConstants.EMAIL_PASS_KEY,
+                businessId
+        );
+
+        String fromEmail = getFromEmail(businessId);
+
+        List<String> recipients = getRecipients(businessId);
+        if (recipients.isEmpty()) {
+            saveLowInventoryLog(business, reportDate, scheduledTime, "SKIPPED", "Email.UserTo has no valid recipients.");
+            return;
+        }
+
+        List<ProductDTO> lowInventoryProducts = getLowInventoryProducts(businessId);
+
+        if (lowInventoryProducts.isEmpty()) {
+            saveLowInventoryLog(business, reportDate, scheduledTime, "SKIPPED", "No low inventory products found.");
+            return;
+        }
+
+        String htmlBody = lowInventoryEmailTemplate.build(
+                business,
+                reportDate,
+                lowInventoryProducts
+        );
+
+        String subject = "Inventario bajo - " + business.getName() + " - " + reportDate;
+
+        emailService.sendHtmlEmailWithAttachmentAndCCO(
+                smtpHost,
+                smtpPort,
+                smtpUsername,
+                smtpPassword,
+                true,
+                true,
+                fromEmail,
+                recipients,
+                subject,
+                htmlBody,
+                List.of(),
+                null,
+                null
+        );
+
+        saveLowInventoryLog(business, reportDate, scheduledTime, "SENT", null);
+
+    } catch (Exception ex) {
+        saveLowInventoryLog(business, reportDate, scheduledTime, "ERROR", ex.getMessage());
+    }
+}
+private List<ProductDTO> getLowInventoryProducts(Long businessId) {
+    ResponseEntity<?> response = reportService.getLowInventory(businessId);
+
+    if (!(response.getBody() instanceof List<?> products)) {
+        return List.of();
+    }
+
+    return products.stream()
+            .filter(ProductDTO.class::isInstance)
+            .map(ProductDTO.class::cast)
+            .toList();
+}
+private void saveLowInventoryLog(Business business, LocalDate reportDate, LocalTime scheduledTime, String status, String errorMessage) {
+    AutomatedEmailLog log = new AutomatedEmailLog();
+    log.setBusiness(business);
+    log.setEmailType(AutomatedEmailConstants.LOW_INVENTORY_TYPE);
+    log.setReportDate(reportDate);
+    log.setScheduledTime(String.format("%02d:%02d", scheduledTime.getHour(), scheduledTime.getMinute()));
+    log.setSentAt(Instant.now());
+    log.setStatus(status);
+    log.setErrorMessage(errorMessage);
+    automatedEmailLogRepository.save(log);
+}
 }
