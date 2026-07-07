@@ -3,6 +3,7 @@ package com.retailmanager.rmpaydashboard.services.services.EmailService;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -10,8 +11,16 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
+
+import jakarta.mail.internet.MimeMessage;
+
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
@@ -2517,9 +2526,141 @@ msg=msg+"                                             <p>Cordilmente, <br> Equip
                 return msg;
     }
 
+@Override
+    public void sendHtmlEmailWithAttachmentAndCCO(String fromEmail, List<String> toList, String subject, String htmlBody, List<String> cc,
+            byte[] attachmentData, String attachmentFileName) {
+        try {
+            String sender = (fromEmail == null || fromEmail.isBlank()) ? emailConfigData.getEmailFrom() : fromEmail.trim();
+            Email from = new Email(sender);
 
+            Personalization personalization = new Personalization();
+            for (String recipient : toList) {
+                personalization.addTo(new Email(recipient));
+            }
 
+            if (cc != null) {
+                for (String ccRecipient : cc) {
+                    personalization.addCc(new Email(ccRecipient));
+                }
+            }
 
+            Mail mail = new Mail();
+            mail.setFrom(from);
+            mail.setSubject(subject);
+            mail.addContent(new Content("text/html", htmlBody));
+            mail.addPersonalization(personalization);
+
+            if (attachmentData != null && attachmentFileName != null && !attachmentFileName.isEmpty()) {
+                InputStream pdfInputStream = new ByteArrayInputStream(attachmentData);
+                Attachments attachments = new Attachments.Builder(attachmentFileName, pdfInputStream)
+                        .withType("application/" + obtenerExtension(attachmentFileName))
+                        .build();
+                mail.addAttachments(attachments);
+                System.out.println("Adjuntando archivo: " + attachmentFileName);
+            }
+
+            SendGrid sg = new SendGrid(SENDGRID_API_KEY);
+            Request request = new Request();
+
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+
+            System.out.println("Enviando correo...");
+            Response response = sg.api(request);
+            if (response.getStatusCode() != 202) {
+                System.out.println("Error al enviar el correo: " + response.getBody());
+            }
+            if (response.getStatusCode() == 202) {
+                System.out.println("Correo enviado exitosamente");
+            }
+        } catch (IOException ex) {
+            System.out.println("Error al enviar el correo: " + ex.getMessage());
+        } catch (Exception ex) {
+            System.out.println("Error al enviar el correo: " + ex.getMessage());
+        }
+    }
+
+// ── NEW: SMTP email sender with HTML, CC and attachment ──────────────────
+// Purpose : Sends an HTML email using SMTP with optional CC and attachment
+// Depends on : obtenerExtension(attachmentFileName)
+// Does NOT modify : business logic, recipient behavior, attachment behavior
+@Override
+public void sendHtmlEmailWithAttachmentAndCCO(
+        String smtpHost,
+        int smtpPort,
+        String smtpUsername,
+        String smtpPassword,
+        boolean smtpAuth,
+        boolean startTls,
+        String fromEmail,
+        List<String> toList,
+        String subject,
+        String htmlBody,
+        List<String> cc,
+        byte[] attachmentData,
+        String attachmentFileName
+) {
+    try {
+        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+        mailSender.setHost(smtpHost);
+        mailSender.setPort(smtpPort);
+        mailSender.setUsername(smtpUsername);
+        mailSender.setPassword(smtpPassword);
+
+        Properties props = mailSender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", String.valueOf(smtpAuth));
+        props.put("mail.smtp.starttls.enable", String.valueOf(startTls));
+        props.put("mail.debug", "false");
+
+        MimeMessage message = mailSender.createMimeMessage();
+
+        MimeMessageHelper helper = new MimeMessageHelper(
+                message,
+                attachmentData != null && attachmentFileName != null && !attachmentFileName.isBlank(),
+                StandardCharsets.UTF_8.name()
+        );
+
+        String sender = (fromEmail == null || fromEmail.isBlank())
+                ? smtpUsername
+                : fromEmail.trim();
+
+        helper.setFrom(sender);
+        helper.setSubject(subject);
+        helper.setText(htmlBody, true);
+
+        if (toList != null && !toList.isEmpty()) {
+            helper.setTo(toList.toArray(new String[0]));
+        } else {
+            System.out.println("No se enviará correo porque la lista de destinatarios está vacía.");
+            return;
+        }
+
+        if (cc != null && !cc.isEmpty()) {
+            helper.setCc(cc.toArray(new String[0]));
+        }
+
+        if (attachmentData != null && attachmentFileName != null && !attachmentFileName.isBlank()) {
+            ByteArrayResource attachmentResource = new ByteArrayResource(attachmentData);
+
+            helper.addAttachment(
+                    attachmentFileName,
+                    attachmentResource,
+                    "application/" + obtenerExtension(attachmentFileName)
+            );
+
+            System.out.println("Adjuntando archivo: " + attachmentFileName);
+        }
+
+        System.out.println("Enviando correo por SMTP...");
+        mailSender.send(message);
+        System.out.println("Correo enviado exitosamente");
+
+    } catch (Exception ex) {
+        System.out.println("Error al enviar el correo por SMTP: " + ex.getMessage());
+    }
+}
     @Override
     public void testEmailService(EmailBodyData emailData) {
        List<String> toList = Arrays.asList(emailData.getEmail());

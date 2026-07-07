@@ -17,5 +17,7 @@ public interface BusinessConfigurationRepository extends CrudRepository<Business
     @Query("SELECT b FROM BusinessConfiguration b WHERE b.configKey like :configKey AND b.business.businessId = :businessId")
     public List<BusinessConfiguration> findByStartKey(String configKey, Long businessId);
 
-    
+    @Query("SELECT b FROM BusinessConfiguration b WHERE b.configKey = :configKey")
+    public List<BusinessConfiguration> findByConfigKey(String configKey);
+
 }
