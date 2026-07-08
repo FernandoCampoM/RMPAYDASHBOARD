@@ -17,6 +17,7 @@ public final class AutomatedEmailConstants {
     public static final String LOW_INVENTORY_TYPE = "LOW_INVENTORY";
 public static final String DAILY_LOW_INVENTORY_ACTIVE_KEY = "Email.LowInventory.active";
 public static final String DAILY_LOW_INVENTORY_TIME_KEY = "Email.LowInventory.time";
+public static final String SHIFT_CLOSING_REPORT_ACTIVE_KEY = "Email.BatchClosure.active";
 
     private AutomatedEmailConstants() {
     }

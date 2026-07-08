@@ -2,7 +2,6 @@ package com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import lombok.AllArgsConstructor;

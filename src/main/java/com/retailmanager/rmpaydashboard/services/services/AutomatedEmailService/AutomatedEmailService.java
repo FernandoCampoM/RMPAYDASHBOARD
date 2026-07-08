@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,8 @@ import com.retailmanager.rmpaydashboard.models.AutomatedEmailLog;
 import com.retailmanager.rmpaydashboard.repositories.BusinessConfigurationRepository;
 import com.retailmanager.rmpaydashboard.repositories.AutomatedEmailLogRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.ProductDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ShiftDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BatchCloseReportDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySummaryDTO;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
 import com.retailmanager.rmpaydashboard.services.services.ReportsServices.IReportService;
@@ -46,6 +49,10 @@ public class AutomatedEmailService {
     private DailySummaryEmailTemplate dailySummaryEmailTemplate;
     @Autowired
 private LowInventoryEmailTemplate lowInventoryEmailTemplate;
+@Autowired
+private ShiftClosingEmailTemplate shiftClosingEmailTemplate;
+@Autowired
+private BatchCloseReportEmailTemplate batchCloseReportEmailTemplate;
 
     @Transactional
     public void processDailySummaryEmails() {
@@ -362,5 +369,140 @@ private void saveLowInventoryLog(Business business, LocalDate reportDate, LocalT
     log.setStatus(status);
     log.setErrorMessage(errorMessage);
     automatedEmailLogRepository.save(log);
+}
+
+@Transactional
+public void sendShiftClosingReport(
+        Long businessId,
+        String businessName,
+        ShiftDTO shift
+) {
+    try {
+        String smtpHost = getRequiredConfigurationValue(
+                AutomatedEmailConstants.EMAIL_SMTP_HOST_KEY,
+                businessId
+        );
+
+        int smtpPort = getRequiredConfigurationIntValue(
+                AutomatedEmailConstants.EMAIL_SMTP_PORT_KEY,
+                businessId
+        );
+
+        String smtpUsername = getRequiredConfigurationValue(
+                AutomatedEmailConstants.EMAIL_FROM_KEY,
+                businessId
+        );
+
+        String smtpPassword = getRequiredConfigurationValue(
+                AutomatedEmailConstants.EMAIL_PASS_KEY,
+                businessId
+        );
+
+        String fromEmail = getFromEmail(businessId);
+
+        List<String> recipients = getRecipients(businessId);
+        if (recipients.isEmpty()) {
+            throw new IllegalStateException("Email.UserTo has no valid recipients.");
+        }
+
+        String htmlBody = shiftClosingEmailTemplate.build(
+                businessName,
+                businessId,
+                shift
+        );
+
+        String subject = "Cierre de turno - " + businessName + " - " + shift.userName();
+
+        emailService.sendHtmlEmailWithAttachmentAndCCO(
+                smtpHost,
+                smtpPort,
+                smtpUsername,
+                smtpPassword,
+                true,
+                true,
+                fromEmail,
+                recipients,
+                subject,
+                htmlBody,
+                List.of(),
+                null,
+                null
+        );
+
+    } catch (Exception ex) {
+        System.out.println("com.retailmanager.rmpaydashboard.services.services.AutomatedEmailService.AutomatedEmailService.sendShiftClosingReport Error enviando email de cierre de turno: " + ex.getMessage());
+        throw new IllegalStateException("Error enviando cierre de turno: " + ex.getMessage(), ex);
+    }
+}
+@Transactional
+public ResponseEntity<?> sendBatchCloseReport(BatchCloseReportDTO report) {
+    try {
+        Long businessId = report.businessId();
+        BusinessConfiguration activeConfiguration = businessConfigurationRepository.findByKey(AutomatedEmailConstants.SHIFT_CLOSING_REPORT_ACTIVE_KEY, businessId);
+        if (activeConfiguration == null || !isTrue(activeConfiguration.getValue())) {
+            HashMap<String, String> response = new HashMap<>();
+            response.put("message", "Batch close report email is not active.");
+            return ResponseEntity.ok().body(response);
+        }
+        
+        String smtpHost = getRequiredConfigurationValue(
+                AutomatedEmailConstants.EMAIL_SMTP_HOST_KEY,
+                businessId
+        );
+
+        int smtpPort = getRequiredConfigurationIntValue(
+                AutomatedEmailConstants.EMAIL_SMTP_PORT_KEY,
+                businessId
+        );
+
+        String smtpUsername = getRequiredConfigurationValue(
+                AutomatedEmailConstants.EMAIL_FROM_KEY,
+                businessId
+        );
+
+        String smtpPassword = getRequiredConfigurationValue(
+                AutomatedEmailConstants.EMAIL_PASS_KEY,
+                businessId
+        );
+
+        String fromEmail = getFromEmail(businessId);
+
+        List<String> recipients = getRecipients(businessId);
+
+        if (recipients.isEmpty()) {
+            throw new IllegalStateException("Email.UserTo has no valid recipients.");
+        }
+
+        String htmlBody = batchCloseReportEmailTemplate.build(report);
+
+        String subject = "Cierre de batch - "
+                + report.businessName()
+                + " - "
+                + report.batchId();
+
+        emailService.sendHtmlEmailWithAttachmentAndCCO(
+                smtpHost,
+                smtpPort,
+                smtpUsername,
+                smtpPassword,
+                true,
+                true,
+                fromEmail,
+                recipients,
+                subject,
+                htmlBody,
+                List.of(),
+                null,
+                null
+        );
+        HashMap<String, String> response = new HashMap<>();
+        response.put("message", "Batch close report email sent successfully.");
+        return ResponseEntity.ok().body(response);
+    } catch (Exception ex) {
+        throw new IllegalStateException(
+                "Error enviando reporte de cierre de batch: " + ex.getMessage(),
+                ex
+        );
+    }
 }
 }
