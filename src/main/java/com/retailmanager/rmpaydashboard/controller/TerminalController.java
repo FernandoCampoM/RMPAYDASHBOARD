@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.controller;
 
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -19,7 +20,6 @@ import com.retailmanager.rmpaydashboard.services.services.TerminalService.ITermi
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 
 @RestController
 @RequestMapping("/api")
@@ -35,7 +35,7 @@ public class TerminalController {
      * @return              the ResponseEntity containing the terminal found
      */
     @GetMapping("/terminals/{terminalId}")
-    public ResponseEntity<?> findById(@Valid @PathVariable @Positive(message = "El id del terminal debe ser positivo")String terminalId){
+    public ResponseEntity<?> findById(@Valid @PathVariable String terminalId){
         return this.terminalService.findById(terminalId);
     }
     /**
@@ -70,8 +70,12 @@ public class TerminalController {
      * @return              description of return value
      */
     @PutMapping("/terminals/{terminalId}")
-    public ResponseEntity<?> update(@Valid @PathVariable @Positive(message = "El id del terminal debe ser positivo")String terminalId,@Valid @RequestBody TerminalDTO prmTerminal){
+    public ResponseEntity<?> update(@Valid @PathVariable String terminalId,@Valid @RequestBody TerminalDTO prmTerminal){
         return this.terminalService.update(terminalId,prmTerminal);
+    }
+    @PutMapping("/terminals/{idTerminal}/automaticPayments/{status}")
+    public ResponseEntity<?> updateStatus(@Valid @PathVariable String idTerminal, @Valid  @PathVariable Boolean status){
+        return this.terminalService.updateAutomaticPayments(idTerminal,status);
     }
     /**
      * Delete a terminal by ID.
@@ -80,7 +84,7 @@ public class TerminalController {
      * @return              true if the terminal is successfully deleted, false otherwise
      */
     @DeleteMapping("/terminals/{terminalId}")
-    public Boolean delete(@Valid @PathVariable @Positive(message = "El id del terminal debe ser positivo")String terminalId){
+    public Boolean delete(@Valid @PathVariable String terminalId){
         return this.terminalService.delete(terminalId);
     }
     /**
@@ -91,11 +95,11 @@ public class TerminalController {
      * @return             the ResponseEntity with the result of the update
      */
     @PutMapping("/terminals/{terminalId}/enable/{enable}")
-    public ResponseEntity<?> updateEnable(@Valid @PathVariable @Positive(message = "El id del terminal debe ser positivo")String terminalId, @Valid @PathVariable boolean enable){
+    public ResponseEntity<?> updateEnable(@Valid @PathVariable String terminalId, @Valid @PathVariable boolean enable){
         return this.terminalService.updateEnable(terminalId,enable);
     }
     @GetMapping("/terminals/expiredByBusiness/{businessId}")
-    public ResponseEntity<?> getExpiredTerminals(@Valid @PathVariable @Positive(message = "El id del negocio debe ser positivo")Long businessId){
+    public ResponseEntity<?> getExpiredTerminals(@Valid @PathVariable Long businessId){
         return this.terminalService.getExpiredTerminals(businessId);
     }
 }

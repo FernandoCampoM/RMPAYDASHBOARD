@@ -13,7 +13,6 @@ import com.retailmanager.rmpaydashboard.services.services.RMPayAtTheTable.UserSe
 
 import jakarta.validation.Valid;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/payAtTheTable/users")

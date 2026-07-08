@@ -1,12 +1,16 @@
 package com.retailmanager.rmpaydashboard.models;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -15,12 +19,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity @Getter @Setter @NoArgsConstructor  @AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class Business {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,7 +49,7 @@ public class Business {
     @Column(nullable = false)
     private double discount=0.0;
     @Column(nullable = true)
-    private LocalDate lastPayment;
+    private Instant lastPayment;
     @Column(nullable = true)
     private String comment;
 
@@ -50,15 +57,22 @@ public class Business {
     private Long logoAth;
     
     @Column(nullable = true)
-    private LocalDate priorNotification;
+    private Instant priorNotification;
     @Column(nullable = true)
-    private LocalDate lastDayNotification;
+    private Instant lastDayNotification;
     @Column(nullable = true)
-    private LocalDate afterNotification;
+    private Instant afterNotification;
     @Column(nullable = true)
-    private LocalDate registerDate;
+    private Instant registerDate;
     @Column(nullable = true)
     public Float percentageProfit;
+
+    @CreatedDate
+    @Column(updatable = false)
+    private Instant createdAt;
+
+    @LastModifiedDate
+    private Instant updatedAt;
     /**Objeto que encapsula la información de la dirección */
     @OneToOne(cascade=CascadeType.ALL,optional = true)
     @JoinColumn( name="addressId",nullable = true)
@@ -83,5 +97,16 @@ public class Business {
     @OneToMany(mappedBy = "business",fetch =FetchType.LAZY)
     private List<UsersBusiness> usersBusiness;
     
+    @PrePersist
+    private void prePersist() {
+        
+        if (this.createdAt == null) {
+            this.createdAt = Instant.now();
+        }
+    }
 
+    @PreUpdate
+    private void preUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

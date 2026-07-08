@@ -16,6 +16,7 @@ import com.retailmanager.rmpaydashboard.services.DTO.doPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.services.InvoiceServices.IInvoiceServices;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -82,6 +83,49 @@ public class InvoiceController {
     public ResponseEntity<?> doPayment(@Valid @RequestBody doPaymentDTO prmPaymentInfo){
         return this.invoiceService.doPayment(prmPaymentInfo);
     }
+    /**
+     * Check the status of an ATHM transaction by invoice number
+     * @param invoiceNumber the invoice number to check
+     * @return a ResponseEntity containing the status of the transaction
+     */
+    @GetMapping("/invoices/ATHM/checkTransaction/{invoiceNumber}")
+    public ResponseEntity<?> checkTransaction(@Valid @PathVariable @PositiveOrZero(message = "invoiceNumber.positiveOrZero") Long invoiceNumber){
+        return this.invoiceService.checkStatusATHM(invoiceNumber);
+    }
+    /**
+     * Confirm an ATHM transaction by invoice number
+     * @param invoiceNumber the invoice number to confirm
+     * @return a ResponseEntity containing the updated invoice information or an
+     *         error message
+     */
+    @PostMapping("/invoices/ATHM/confirmTransaction/{invoiceNumber}")
+    public ResponseEntity<?> confirmTransaction(@Valid @PathVariable @PositiveOrZero(message = "invoiceNumber.positiveOrZero") Long invoiceNumber){
+        return this.invoiceService.confirmTransactionATHM(invoiceNumber);
+    }
+/**
+ * Cancel an ATHM transaction by invoice number.
+ * 
+ * @param invoiceNumber the invoice number to cancel
+ * @return a ResponseEntity containing the updated invoice information or an
+ *         error message
+ */
+
+    @PostMapping("/invoices/ATHM/cancelTransaction/{invoiceNumber}")
+    public ResponseEntity<?> cancelTransaction(@Valid @PathVariable @PositiveOrZero(message = "invoiceNumber.positiveOrZero") Long invoiceNumber){
+        return this.invoiceService.cancelTransactionATHM(invoiceNumber);
+    }
+    /**
+     * Confirms or rejects a payment based on the given invoice number and payment
+     * information.
+     *
+     * @param invoiceNumber the invoice number to confirm or reject
+     * @param prmPaymentInfo the payment information containing the confirmation
+     *                       status and observation
+     * @return a ResponseEntity containing the updated invoice information or an
+     *         error message
+     * @throws EntidadNoExisteException if the invoice with the given invoice number
+     *                                  does not exist in the database
+     */
     @PostMapping("/invoices/{invoiceNumber}/confirmOrReject")
     public ResponseEntity<?> confirmOrReject(@PathVariable Long invoiceNumber,@Valid @RequestBody ConfirmPaymentDTO prmPaymentInfo){
         return this.invoiceService.confirmOrRejectPaymnt(invoiceNumber,prmPaymentInfo);

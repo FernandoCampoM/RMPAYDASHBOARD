@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,15 +19,15 @@ import jakarta.persistence.*;
 public class Sale {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    
     @Column(name = "saleID")
-    private Long saleID;
+    private String saleID;
 
     @Column(name = "saleCreationDate", nullable = false)
-    private String saleCreationDate;
+    private Instant saleCreationDate;
 
     @Column(name = "saleEndDate")
-    private LocalDate saleEndDate;
+    private Instant saleEndDate;
 
     @Column(name = "saleItems", nullable = true, columnDefinition = "varchar(MAX)")
     private String items;
@@ -51,7 +51,7 @@ public class Sale {
     private String saleTransactionType;
 
     @Column(name = "saleMachineID")
-    private Integer saleMachineID;
+    private String saleMachineID;
 
     @Column(name = "saleIvuNumber")
     private String saleIvuNumber;
@@ -68,11 +68,15 @@ public class Sale {
     //@Column(name = "merchantId", nullable = false)
     //private String merchantId;
 
-    @Column(name = "saleToRefund")
-    private Integer saleToRefund;
+    @Column(name = "saleToRefund",columnDefinition = "varchar(MAX)")
+    private String saleToRefund;
 
     @Column(nullable = false, columnDefinition = "float default 0")
     private Double tipAmount;
+    @Column(nullable = false, columnDefinition = "float default 0")
+    private Double tipPercentage;
+
+    private Integer remoto;
 
     @ManyToOne(cascade=CascadeType.PERSIST, optional = false)
     @JoinColumn(name = "businessId")
@@ -107,6 +111,7 @@ public class Sale {
         saleDTO.setUserId(this.getUserId());
         saleDTO.setSaleToRefund(this.getSaleToRefund());
         saleDTO.setTipAmount(this.getTipAmount());
+        saleDTO.setTipPercentage(this.getTipPercentage());
         saleDTO.setBusinessId(this.getBusiness().getBusinessId());
         saleDTO.setTerminalId(this.getTerminal().getTerminalId());
         return saleDTO;

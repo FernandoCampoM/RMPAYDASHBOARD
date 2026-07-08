@@ -4,6 +4,11 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.retailmanager.rmpaydashboard.models.Transactions;
+import com.retailmanager.rmpaydashboard.services.DTO.TransactionDTO;
+
+import jakarta.transaction.Transaction;
+
 
 
 
@@ -20,7 +25,8 @@ public class Mapper {
         ModelMapper objMapper= new ModelMapper();
         objMapper.getConfiguration().setPropertyCondition(context -> 
         !(context.getSource() instanceof org.hibernate.collection.spi.PersistentCollection));
-        
+        objMapper.typeMap(TransactionDTO.class, Transactions.class)
+    .addMappings(mapper -> mapper.skip(Transactions::setSale));
         return objMapper;
     }
      

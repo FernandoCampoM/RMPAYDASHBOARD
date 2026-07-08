@@ -71,6 +71,7 @@ public class UserPayAtTableService implements IUserPayAtTableService {
         user.setPhone(userDTO.getPhone());
         user.setMerchantId(userDTO.getMerchantId());
         user.setName(userDTO.getName());
+        user.setTokenATHMovil(userDTO.getTokenATHMovil());
         RMPayAtTheTable_User updatedUser = userRepository.save(user);
         return ResponseEntity.ok(mapper.map(updatedUser, RMPayAtTheTable_UserDTO.class));
     }

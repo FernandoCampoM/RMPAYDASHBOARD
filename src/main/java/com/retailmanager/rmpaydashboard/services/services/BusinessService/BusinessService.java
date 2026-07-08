@@ -1,8 +1,13 @@
 package com.retailmanager.rmpaydashboard.services.services.BusinessService;
 
 import java.text.DecimalFormat;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,20 +23,26 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.google.gson.Gson;
+import com.retailmanager.rmpaydashboard.enums.EmployeeRole;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.ConsumeAPIException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadNoExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadYaExisteException;
 import com.retailmanager.rmpaydashboard.models.Business;
 import com.retailmanager.rmpaydashboard.models.Invoice;
 import com.retailmanager.rmpaydashboard.models.PaymentData;
+import com.retailmanager.rmpaydashboard.models.Permission;
 import com.retailmanager.rmpaydashboard.models.Service;
 import com.retailmanager.rmpaydashboard.models.Terminal;
 import com.retailmanager.rmpaydashboard.models.User;
+import com.retailmanager.rmpaydashboard.models.UserPermission;
+import com.retailmanager.rmpaydashboard.models.UsersBusiness;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.InvoiceRepository;
+import com.retailmanager.rmpaydashboard.repositories.PermisionRepository;
 import com.retailmanager.rmpaydashboard.repositories.ServiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
 import com.retailmanager.rmpaydashboard.repositories.UserRepository;
+import com.retailmanager.rmpaydashboard.repositories.UsersAppRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.BusinessDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.CategoryDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.RegsitryBusinessDTO;
@@ -52,11 +63,15 @@ public class BusinessService implements IBusinessService {
     @Autowired
     private UserRepository serviceDBUser;
     @Autowired
+    private UsersAppRepository serviceDBEmployee;
+    @Autowired
     private ServiceRepository serviceDBService;
     @Autowired
     private TerminalRepository serviceDBTerminal;
     @Autowired
     private ITerminalService terminalService;
+     @Autowired
+    private PermisionRepository serviceDBUPermission;
     @Autowired
     @Qualifier("mapperbase")
     private ModelMapper mapper;
@@ -122,8 +137,37 @@ public class BusinessService implements IBusinessService {
                     objBusiness.setUser(existUser.get());
                 }
             }
-            objBusiness.setRegisterDate(LocalDate.now());
+            objBusiness.setRegisterDate(Instant.now());
             objBusiness=this.serviceDBBusiness.save(objBusiness);
+            // Si el negocio se ha creado correctamente, 
+            //creamos el usuario administrador por defecto
+            // y le asignamos el negocio. 
+            UsersBusiness objUserBusiness=new UsersBusiness();
+            objUserBusiness.setBusiness(objBusiness);
+            objUserBusiness.setEnable(true);
+            objUserBusiness.setUsername(EmployeeRole.ADMIN.getName());
+            objUserBusiness.setPassword("1234");
+            objUserBusiness.setCostHour(0.0);
+            objUserBusiness.setCreatedAt(LocalDate.now().atStartOfDay());
+            objUserBusiness.setUpdatedAt(LocalDate.now().atStartOfDay());
+            Iterable<Permission> listPermissions = this.serviceDBUPermission.findAll();
+           List<UserPermission> userPermissionsList = new ArrayList<>();
+
+            for (Permission permission : listPermissions) {
+                UserPermission userPermission = new UserPermission();
+                userPermission.setPermission(permission); // Establece el objeto Permission
+                userPermission.setUserBusiness(objUserBusiness); // Establece el UserBusiness asociado
+                userPermission.setEnable(true); // Establece 'true' por defecto
+
+                userPermissionsList.add(userPermission);
+            }
+
+            // Finalmente, establece la lista de UserPermission en tu objUserBusiness
+            objUserBusiness.setUserPermissions(userPermissionsList);
+            objUserBusiness.setDownload(false);
+            objUserBusiness.setRoleId(EmployeeRole.ADMIN.getId());
+            objUserBusiness=this.serviceDBEmployee.save(objUserBusiness);
+
          }
         BusinessDTO businessDTO=this.mapper.map(objBusiness, BusinessDTO.class);
         if(businessDTO!=null){
@@ -289,10 +333,39 @@ public class BusinessService implements IBusinessService {
                     objBusiness.setEnable(true);
                     objBusiness.setDiscount(0.0);
                     if(prmBusiness.getPaymethod()!=null && prmBusiness.getPaymethod().equals("CREDIT-CARD")){
-                        objBusiness.setLastPayment(LocalDate.now());
+                        objBusiness.setLastPayment(Instant.now());
                     }
-                    objBusiness.setRegisterDate(LocalDate.now());
+                    objBusiness.setRegisterDate(Instant.now());
                     objBusiness=this.serviceDBBusiness.save(objBusiness);
+                    // Si el negocio se ha creado correctamente, 
+            //creamos el usuario administrador por defecto
+            // y le asignamos el negocio. 
+            UsersBusiness objUserBusiness=new UsersBusiness();
+            objUserBusiness.setBusiness(objBusiness);
+            objUserBusiness.setEnable(true);
+            objUserBusiness.setUsername(EmployeeRole.ADMIN.getName());
+            objUserBusiness.setPassword("1234");
+            objUserBusiness.setCostHour(0.0);
+            objUserBusiness.setCreatedAt(LocalDate.now().atStartOfDay());
+            objUserBusiness.setUpdatedAt(LocalDate.now().atStartOfDay());
+            Iterable<Permission> listPermissions = this.serviceDBUPermission.findAll();
+            List<UserPermission> userPermissionsList = new ArrayList<>();
+
+            for (Permission permission : listPermissions) {
+                UserPermission userPermission = new UserPermission();
+                userPermission.setPermission(permission); // Establece el objeto Permission
+                userPermission.setUserBusiness(objUserBusiness); // Establece el UserBusiness asociado
+                userPermission.setEnable(true); // Establece 'true' por defecto
+
+                userPermissionsList.add(userPermission);
+            }
+
+            // Finalmente, establece la lista de UserPermission en tu objUserBusiness
+            objUserBusiness.setUserPermissions(userPermissionsList);
+            objUserBusiness.setDownload(false);
+            objUserBusiness.setRoleId(EmployeeRole.ADMIN.getId());
+            objUserBusiness=this.serviceDBEmployee.save(objUserBusiness);
+            // Creamos los terminales del negocio
                     objBusiness.setTerminals(new ArrayList<Terminal>());
                     BusinessDTO objBusinessDTO=new BusinessDTO();
                     if(objBusiness!=null){
@@ -311,10 +384,10 @@ public class BusinessService implements IBusinessService {
                                         TerminalsDoPaymentDTO objTerminalsDoPaymentDTO=new TerminalsDoPaymentDTO();
                                         Terminal objTerminal=new Terminal();
                                         objTerminal.setTerminalId(this.terminalService.getTerminalId());
-                                        objTerminal.setRegisterDate(LocalDate.now());
+                                        objTerminal.setRegisterDate(Instant.now());
                                         objTerminal.setEnable(true);
                                         objTerminal.setBusiness(objBusiness);
-                                        objTerminal.setExpirationDate(LocalDate.now().plusDays(objService.getDuration()));
+                                        objTerminal.setExpirationDate(Instant.now().plus(Duration.ofDays(objService.getDuration())));
                                         objTerminal.setSerial(null);
                                         objTerminal.setName(objTerminal.getTerminalId());
                                         objTerminal.setService(objService);
@@ -362,10 +435,10 @@ public class BusinessService implements IBusinessService {
                                         TerminalsDoPaymentDTO objTerminalsDoPaymentDTO=new TerminalsDoPaymentDTO();
                                         Terminal objTerminal=new Terminal();
                                         objTerminal.setTerminalId(this.terminalService.getTerminalId());
-                                        objTerminal.setRegisterDate(LocalDate.now());
+                                        objTerminal.setRegisterDate(Instant.now());
                                         objTerminal.setEnable(true);
                                         objTerminal.setBusiness(objBusiness);
-                                        objTerminal.setExpirationDate(LocalDate.now().plusDays(objService.getDuration()));
+                                        objTerminal.setExpirationDate(Instant.now().plus(Duration.ofDays(objService.getDuration())));
                                         objTerminal.setSerial(null);
                                         objTerminal.setName(objTerminal.getTerminalId());
                                         objTerminal.setService(objService);
@@ -412,10 +485,10 @@ public class BusinessService implements IBusinessService {
                                         TerminalsDoPaymentDTO objTerminalsDoPaymentDTO=new TerminalsDoPaymentDTO();
                                         Terminal objTerminal=new Terminal();
                                         objTerminal.setTerminalId(this.terminalService.getTerminalId());
-                                        objTerminal.setRegisterDate(LocalDate.now());
+                                        objTerminal.setRegisterDate(Instant.now());
                                         objTerminal.setEnable(false);
                                         objTerminal.setBusiness(objBusiness);
-                                        objTerminal.setExpirationDate(LocalDate.now().plusDays(objService.getDuration()));
+                                        objTerminal.setExpirationDate(Instant.now().plus(Duration.ofDays(objService.getDuration())));
                                         objTerminal.setSerial(null);
                                         objTerminal.setName(objTerminal.getTerminalId());
                                         objTerminal.setService(objService);
@@ -641,17 +714,31 @@ public class BusinessService implements IBusinessService {
              objBusiness.setDiscount(prmBusiness.getDiscount());
              objBusiness.setName(prmBusiness.getName());
              objBusiness.setServiceId(serviceId);
-             if(objBusiness.getLogo()!=prmBusiness.getLogo()){
+             if(objBusiness.getLogo()!=null && prmBusiness.getLogo()!=null && !objBusiness.getLogo().equals(prmBusiness.getLogo())){
                 if(objBusiness.getLogo()!=null){
                     this.fileService.deleteImage(objBusiness.getLogo());
                 }
                 objBusiness.setLogo(prmBusiness.getLogo());
+             }else{
+                if(objBusiness.getLogo()!=null && prmBusiness.getLogo()==null){
+                    this.fileService.deleteImage(objBusiness.getLogo());
+                    objBusiness.setLogo(null);
+                }else if(objBusiness.getLogo()==null && prmBusiness.getLogo()!=null){
+                    objBusiness.setLogo(prmBusiness.getLogo());
+                }
              }
-             if(objBusiness.getLogoAth()!=prmBusiness.getLogoAth()){
+             if(objBusiness.getLogoAth()!=null && prmBusiness.getLogoAth()!=null && !objBusiness.getLogoAth().equals(prmBusiness.getLogoAth())){
                 if(objBusiness.getLogoAth()!=null){
                     this.fileService.deleteImage(objBusiness.getLogoAth());
                 }
                 objBusiness.setLogoAth(prmBusiness.getLogoAth());
+             }else{
+                if(objBusiness.getLogoAth()!=null && prmBusiness.getLogoAth()==null){
+                    this.fileService.deleteImage(objBusiness.getLogoAth());
+                    objBusiness.setLogoAth(null);
+                }else if(objBusiness.getLogoAth()==null && prmBusiness.getLogoAth()!=null){
+                    objBusiness.setLogoAth(prmBusiness.getLogoAth());
+                }
              }
              if(objBusiness!=null){
                 objBusiness=this.serviceDBBusiness.save(objBusiness);
@@ -808,14 +895,22 @@ public class BusinessService implements IBusinessService {
      */
     @Override
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getActivations(LocalDate starDate, LocalDate endDate) {
+    public ResponseEntity<?> getActivations(Instant starDate, Instant endDate) {
         HashMap<String, Object> result = new HashMap<>();
-       
+        
         List<Business> listBusiness = this.serviceDBBusiness.findAllByRegistrations(starDate, endDate);
         List<Terminal> listTerminal = this.serviceDBTerminal.findAllByActivations(starDate, endDate);
         //Activaciones y registraciones del mes anterior en el mismo rango de fechas
-        List<Business> lastMonthlistBusiness = this.serviceDBBusiness.findAllByRegistrations(starDate.minusMonths(1), endDate.minusMonths(1));
-        List<Terminal>  lastMonthlistTerminal = this.serviceDBTerminal.findAllByActivations(starDate.minusMonths(1), endDate.minusMonths(1)); 
+        Instant previousStartMonth = starDate
+        .atZone(ZoneId.systemDefault())
+        .minusMonths(1)
+        .toInstant();
+        Instant previousEndMonth = endDate
+        .atZone(ZoneId.systemDefault())
+        .minusMonths(1)
+        .toInstant();
+        List<Business> lastMonthlistBusiness = this.serviceDBBusiness.findAllByRegistrations(previousStartMonth, previousEndMonth);
+        List<Terminal>  lastMonthlistTerminal = this.serviceDBTerminal.findAllByActivations(previousStartMonth, previousEndMonth); 
         List<HashMap<String, Object>> listRegistraciones = new ArrayList<>();
         
         List<HashMap<String, Object>> listActivaciones = new ArrayList<>();
@@ -839,7 +934,11 @@ public class BusinessService implements IBusinessService {
             }
             if(terminal.getRegisterDate()!=null && terminal.getLastPayment()!=null ){
                 totalSales+=terminal.getLastPaymentValue();
-                if( terminal.getRegisterDate().getMonth()==terminal.getLastPayment().getMonth() && terminal.getRegisterDate().getYear()==terminal.getLastPayment().getYear()){
+
+                boolean sameMonth = YearMonth.from(terminal.getRegisterDate().atZone(ZoneOffset.UTC))
+                        .equals(YearMonth.from(terminal.getLastPayment().atZone(ZoneOffset.UTC)));
+
+                if(sameMonth){
                     if(terminal.isPrincipal()){
                         activacion.put("serviceName", "TERMINAL PRINCIPAL"+terminal.getService().getServiceName());
                     }else{
@@ -932,6 +1031,19 @@ public class BusinessService implements IBusinessService {
         business.getUser().setBusiness(null);
             BusinessDTO businessDTO=this.mapper.map(business, BusinessDTO.class);
         return new ResponseEntity<BusinessDTO>(businessDTO,HttpStatus.OK);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> findByTerminalId(String terminalId) {
+        if(terminalId!=null){
+            Optional<Terminal> optional= this.serviceDBTerminal.findById(terminalId);
+            if(optional.isPresent()){
+                BusinessDTO objBusinessDTO=this.mapper.map(optional.get().getBusiness(),BusinessDTO.class);
+                return new ResponseEntity<BusinessDTO>(objBusinessDTO,HttpStatus.OK);
+            }   
+        }
+        EntidadNoExisteException objExeption = new EntidadNoExisteException("El Terminal con terminalId "+terminalId+" no existe en la Base de datos");
+                throw objExeption;
     }
     
 }

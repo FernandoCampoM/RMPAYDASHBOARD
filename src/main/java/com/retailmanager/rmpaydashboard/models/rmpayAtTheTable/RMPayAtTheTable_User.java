@@ -33,6 +33,8 @@ public class RMPayAtTheTable_User {
 
     @Column( nullable = false, unique = true)
     private String username;
+     @Column( nullable = true, columnDefinition = "VARCHAR(MAX)")
+    private String tokenATHMovil;
 
     @Column(nullable = false)
     private String password;

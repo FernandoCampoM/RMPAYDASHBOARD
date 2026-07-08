@@ -27,12 +27,12 @@ public class CorsConfig {
             public void addCorsMappings(@NonNull CorsRegistry registry) {
                 // method implementation
                 registry.addMapping("/login**")
-                .allowedOrigins("http://localhost:4200","*")
+                .allowedOrigins("http://localhost:4200","https://rmpay.retailmanagerpr.com")
                 .allowedMethods("*")
                 .exposedHeaders("*");
                 
                 registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost:4200","*")
+                .allowedOrigins("http://localhost:4200","https://rmpay.retailmanagerpr.com")
                 .allowedMethods("*");
             }
         };

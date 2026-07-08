@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.CodigoError;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.ConfigurationNotFoundException;
+import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.DataInconsistencyException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadNoExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadYaExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.ErrorUtils;
@@ -60,6 +61,13 @@ public class RestApiExceptionHandler {
                                                 HttpStatus.UNAUTHORIZED.value())
                                 .setUrl(req.getRequestURL().toString()).setMetodo(req.getMethod());
             return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+        }
+        @ExceptionHandler(DataInconsistencyException.class)
+        public ResponseEntity<Error> handleDataInconsistencyException(final HttpServletRequest req,final Exception ex, final Locale locale) {
+                final Error error = ErrorUtils.crearError(CodigoError.DATA_INCONSISTENCY.getCodigo(),CodigoError.DATA_INCONSISTENCY.getLlaveMensaje(),
+                                                HttpStatus.CONFLICT.value())
+                                .setUrl(req.getRequestURL().toString()).setMetodo(req.getMethod());
+            return new ResponseEntity<>(error, HttpStatus.CONFLICT);
         }
         /**
          * Atiende las Exepciones EntidadYaExisteException causadas al registrar una entidad ya existente y crea una respuesta

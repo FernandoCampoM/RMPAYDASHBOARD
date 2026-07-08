@@ -47,6 +47,7 @@ public class WebSecurityConfig {
         return http.csrf(csrf->csrf.disable())
                 .authorizeHttpRequests(authRequest->authRequest
                     .requestMatchers("/login").permitAll()
+                    .requestMatchers(HttpMethod.GET,"/api/test/email").permitAll()
                     .requestMatchers(HttpMethod.GET,"/api/services/**").permitAll()
                     .requestMatchers(HttpMethod.GET,"/api/payment-methods/**").permitAll()
                     .requestMatchers(HttpMethod.GET,"/api/resellers/**").permitAll()
@@ -54,6 +55,9 @@ public class WebSecurityConfig {
                     .requestMatchers(HttpMethod.POST,"/api/file").permitAll()
                     .requestMatchers(HttpMethod.POST,"/api/payAtTheTable/users").permitAll()
                     .requestMatchers(HttpMethod.POST,"/api/payAtTheTable/users/login").permitAll()
+                    .requestMatchers(HttpMethod.GET,"/api/invoices/ATHM/checkTransaction/**").permitAll()
+                    .requestMatchers(HttpMethod.POST,"/api/invoices/ATHM/confirmTransaction/**").permitAll()
+                    .requestMatchers(HttpMethod.POST,"/api/invoices/ATHM/cancelTransaction/**").permitAll()
                     .requestMatchers("/users/password/**").hasAnyAuthority("ROLE_MANAGER_VIEW","ROLE_MANAGER")
                     .requestMatchers(HttpMethod.GET,"/api/**").hasAnyAuthority("ROLE_MANAGER_VIEW","ROLE_MANAGER","ROLE_USER","ROLE_USERRMPAYATTHETABLE")
                     .requestMatchers("/api/**").hasAnyAuthority("ROLE_MANAGER","ROLE_USER","ROLE_USERRMPAYATTHETABLE")

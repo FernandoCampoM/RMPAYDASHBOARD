@@ -18,4 +18,22 @@ public interface IInvoiceServices {
     public ResponseEntity<?> testPayment(doPaymentDTO prmPaymentInfo);
     public ResponseEntity<?> getPaymentHistor(LocalDate startDate, LocalDate endDate, String filter);
     public ResponseEntity<?> confirmOrRejectPaymnt(Long invoiceNumber,ConfirmPaymentDTO prmPaymentInfo);
+    /**
+     * Permite verificar el estado de una transacción en ATHM
+     * @param invoiceId
+     * @return
+     */
+    public ResponseEntity<?> checkStatusATHM(Long invoiceId);
+    /**
+     * Permite confirmar la transacción de ATHM
+     * @param invoiceId
+     * @return
+     */
+    public ResponseEntity<?> confirmTransactionATHM( Long invoiceId);
+    /**
+     * Permite cancelar la transacción de ATHM
+     * @param invoiceId 
+     * @return
+     */
+    public ResponseEntity<?> cancelTransactionATHM(Long invoiceId);
 }

@@ -1,6 +1,9 @@
 package com.retailmanager.rmpaydashboard.security;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +31,8 @@ import jakarta.transaction.Transactional;
 
 public class TokenUtils {
     private final static String ACCESS_TOKEN_SECRET="gybPPZLk9ShzIv6V1Zl/xGL0MjAUOY+u327FmRrt7ZI=";
-    private final static Long ACCESS_TOKEN_VALIDITY_SECONDS=2_592_000L;
+    private final static Long ACCESS_TOKEN_VALIDITY_SECONDS=2_592_000L; 
+    private final static Long ACCESS_TOKEN_VALIDITY_SECONDS_PAY_AT_TABLE=2_592_000L; //
     
 
     
@@ -72,12 +76,15 @@ public class TokenUtils {
                     .compact();
     }
     public static String createTokenWithClaims(RMPayAtTheTable_User user, String serialNumber){
-        long expirationTime=ACCESS_TOKEN_VALIDITY_SECONDS *1_000;
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        long expirationTime=ACCESS_TOKEN_VALIDITY_SECONDS_PAY_AT_TABLE*1_000;
         Date expirationDate=new Date(System.currentTimeMillis() + expirationTime);
+        System.out.println("Expiration date: "+expirationDate.toString());
         Map<String, Object> extra= new HashMap<>();
         extra.put("nombre", user.getBusinessName());
         extra.put("roles", Rol.ROLE_USERRMPAYATTHETABLE.toString());
         extra.put("serialNumber", serialNumber);
+        extra.put("expirationDate", formatter.format(expirationDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()));
         
         
         
@@ -137,7 +144,7 @@ public class TokenUtils {
                 User usuario= usuarioRepository.findOneByUsername(username).orElseThrow(()-> new UsernameNotFoundException("El usuario con user "+username+" no existe"));
                 UserDetailsImpl objUser=new UserDetailsImpl(usuario);
                 if(terminalIdLong!=null){usuario.setTempAuthId(terminalIdLong);}
-                usuarioRepository.updateLastLogin(usuario.getUserID(),LocalDate.now());
+                usuarioRepository.updateLastLogin(usuario.getUserID(), Instant.now());
                 return new UsernamePasswordAuthenticationToken(username,null,objUser.getAuthorities());
             }
         } catch (JwtException  e) {

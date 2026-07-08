@@ -7,11 +7,13 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -114,6 +116,8 @@ public class ProductService implements IProductService {
             }
             Product objProduct = this.mapperBase.map(prmProduct, Product.class);
             objProduct.setCategory(optionalCategory.get());
+            objProduct.setCreatedAt(Instant.now());
+            objProduct.setUpdatedAt(Instant.now());
             if(objProduct!=null){
                 objProduct = this.serviceDBProducts.save(objProduct);
                 for(UsersBusiness usersBusiness:objProduct.getCategory().getBusiness().getUsersBusiness()){
@@ -183,6 +187,7 @@ public class ProductService implements IProductService {
         objProduct.setMinimumLevel(prmProduct.getMinimumLevel());
         objProduct.setMaximumLevel(prmProduct.getMaximumLevel());
         objProduct.setName(prmProduct.getName());
+        objProduct.setUpdatedAt(Instant.now());
         Long categoryId=prmProduct.getIdCategory();
         if(categoryId!=null){
             Optional<Category> optionalCategory = this.serviceDBCategory.findById(categoryId);
@@ -335,8 +340,13 @@ public class ProductService implements IProductService {
             
             throw objException;
         }
+        Long maxPosition=this.serviceDBCategory.maxPositionInCategory(business.getBusinessId());
+        if(maxPosition==null){
+            maxPosition=0L;
+        }
         List<ProductDTO> listProductsRTA=new ArrayList<>();
         for (ProductDTO productDTO : listProductsDTO) {
+            
             Product objProduct=null;
             if (productDTO.getCode() != null) {
                 Optional<Product> optionalProduct = this.serviceDBProducts
@@ -365,8 +375,20 @@ public class ProductService implements IProductService {
                 }else{
                     Category objCategory = new Category();
                     objCategory.setCategoryId(null);
+                    objCategory.setPosition(String.valueOf(maxPosition!=null?maxPosition+1:1L));
                     objCategory.setName(categoryName);
                     objCategory.setBusiness(business);
+                    objCategory.setCreatedAt(Instant.now());
+                    objCategory.setUpdatedAt(Instant.now());
+                    objCategory.setColor("Gris");
+                    if(productDTO.getPosition()==null){
+                        maxPosition++;
+                    }else{
+                        objCategory.setPosition(String.valueOf(productDTO.getPosition()));
+                        if(productDTO.getPosition()>maxPosition){
+                            maxPosition=productDTO.getPosition();
+                        }
+                    }
                     objCategory = this.serviceDBCategory.save(objCategory);
                     categoryId=objCategory.getCategoryId();
                     objProduct.setCategory(objCategory);
@@ -380,6 +402,8 @@ public class ProductService implements IProductService {
                 }
             }
             if(objProduct!=null){
+                objProduct.setCreatedAt(Instant.now());
+                objProduct.setUpdatedAt(Instant.now());
                 objProduct = this.serviceDBProducts.save(objProduct);
                 
             }
@@ -411,7 +435,9 @@ public class ProductService implements IProductService {
         if(productId!=null){
             Optional<Product> optional= this.serviceDBProducts.findById(productId);
             if(optional.isPresent()){
-                this.serviceDBProducts.updateEnable(productId, enable);
+                optional.get().setEnable(enable);
+                optional.get().setUpdatedAt(Instant.now());
+                this.serviceDBProducts.save(optional.get());
                 if(enable){
                     for(UsersBusiness usersBusiness:optional.get().getCategory().getBusiness().getUsersBusiness()){
                         ubpServices.updateDownload(productId,usersBusiness.getUserBusinessId(),false);
@@ -444,6 +470,23 @@ public class ProductService implements IProductService {
              Page<Product> result = new PageImpl<>(new ArrayList<>());
              result = this.serviceDBProducts.findProductsByBusinessId(businessId, pageable);
              Page<ProductDTO> resultDTO = result.map(product -> ProductDTO.tOProduct(product));
+             rta = new ResponseEntity<>(resultDTO, HttpStatus.OK);
+        return rta;
+    }
+    @Override
+    @Transactional
+    public ResponseEntity<?> findAllByBusinessId(Long businessId) {
+        ResponseEntity<?> rta = null;
+         if(businessId!=null){
+            Optional<Business> exist = this.serviceDBBusiness.findById(businessId);
+            if(!exist.isPresent()){
+                EntidadNoExisteException objExeption = new EntidadNoExisteException("El business con businessId "+businessId+" ya existe en la Base de datos");
+                throw objExeption;
+            }
+        }
+             List<Product> result = new ArrayList<>();
+             result = this.serviceDBProducts.findProductsByBusinessId(businessId);
+             List<ProductDTO> resultDTO = result.stream().map(product -> ProductDTO.tOProduct(product)).collect(Collectors.toList());
              rta = new ResponseEntity<>(resultDTO, HttpStatus.OK);
         return rta;
     }
@@ -583,6 +626,7 @@ public class ProductService implements IProductService {
         objInventoryReceipt.setReceiptId(prmInventoryReceipt.getReceiptId());
         objInventoryReceipt.setComments(prmInventoryReceipt.getComments());
         objInventoryReceipt.setInventoryEntered(gson.toJson(prmInventoryReceipt.getInventoryItems()));
+        objInventoryReceipt.setSupplier(prmInventoryReceipt.getSupplier());
         Business objBusiness = this.serviceDBBusiness.findById(prmInventoryReceipt.getBusinessId()).orElse(null);
         if(objBusiness==null){
             throw new EntidadNoExisteException("El negocio con ID "+prmInventoryReceipt.getBusinessId()+" no existe en la base de datos");

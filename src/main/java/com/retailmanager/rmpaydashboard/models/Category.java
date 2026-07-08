@@ -11,6 +11,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+
+import java.time.Instant;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 
@@ -24,7 +27,7 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long categoryId;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String name;
     @Column(nullable = false)
     private boolean enable;
@@ -34,4 +37,6 @@ public class Category {
     private Business business;
     private String color;
     private String position;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

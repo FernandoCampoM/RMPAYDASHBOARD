@@ -1,18 +1,21 @@
 package com.retailmanager.rmpaydashboard.backgroundRoutines;
 
-import java.time.LocalDate;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import com.retailmanager.rmpaydashboard.models.Business;
 import com.retailmanager.rmpaydashboard.models.Terminal;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
+import com.retailmanager.rmpaydashboard.services.DTO.InvoiceDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalsDoPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.doPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
@@ -33,7 +36,7 @@ public class BackgroundRoutinesService {
     IEmailService emailService;
     @Modifying
     public void deactivateExpiredTerminals(){
-        List<Terminal> terminals = terminalRepository.findByExpirationDateBefore(LocalDate.now());
+        List<Terminal> terminals = terminalRepository.findByExpirationDateBefore(Instant.now());
         for (Terminal terminal : terminals) {
             terminalRepository.deactivateExpiredTerminals(terminal.getTerminalId());
         }
@@ -41,8 +44,8 @@ public class BackgroundRoutinesService {
     @Transactional
     public void priorNotificaionEmail(){
          HashMap<Long, Object> users = new HashMap<Long, Object>();
-         LocalDate date = LocalDate.now();
-         date=date.minusDays(10);
+         Instant date = Instant.now();
+         date=date.minus(Duration.ofDays(10));
          List<Terminal> terminals = terminalRepository.getBusinessForPriorNotification(date);
          for (Terminal terminal : terminals) {
             if(users.containsKey(terminal.getBusiness().getUser().getUserID())){
@@ -74,8 +77,8 @@ public class BackgroundRoutinesService {
     @Transactional
     public void lastDayNotificaionEmail(){
         HashMap<Long, Object> users = new HashMap<Long, Object>();
-         LocalDate date = LocalDate.now();
-         date=date.minusDays(5);
+         Instant date = Instant.now();
+         date=date.minus(Duration.ofDays(5));
          List<Terminal> terminals = terminalRepository.getBusinessForLastDayNotification(date);
          for (Terminal terminal : terminals) {
             if(users.containsKey(terminal.getBusiness().getUser().getUserID())){
@@ -107,7 +110,7 @@ public class BackgroundRoutinesService {
    @Transactional
    public void afterNotificaionEmail(){
     HashMap<Long, Object> users = new HashMap<Long, Object>();
-         LocalDate date = LocalDate.now();
+         Instant date = Instant.now();
          List<Terminal> terminals = terminalRepository.getBusinessForAfterNotification(date);
          for (Terminal terminal : terminals) {
             if(users.containsKey(terminal.getBusiness().getUser().getUserID())){
@@ -139,7 +142,7 @@ public class BackgroundRoutinesService {
 
     public void automaticPayments() {
         System.out.println("INICIO DE PAGO AUTOMATICO");
-        LocalDate date = LocalDate.now();
+        Instant date = Instant.now();
         Iterable<Business> allBusinesses = businessRepository.findAll();
         for (Business business : allBusinesses) {
             try {
@@ -162,7 +165,34 @@ public class BackgroundRoutinesService {
                             terminalDoPayment.setIdService(terminal.getService().getServiceId());
                             paymentInfo.getTerminalsDoPayment().add(terminalDoPayment);
                         }
-                        invoiceService.doPayment(paymentInfo);
+                        for(int i=0; i<3; i++){
+                            System.out.println("INTENTO DE PAGO AUTOMATICO PARA EL NEGOCIO: "+business.getBusinessId()+" -- INTENTO: "+(i+1));
+                            try{
+                                ResponseEntity<?> res = invoiceService.doPayment(paymentInfo);
+                                InvoiceDTO invoice = (InvoiceDTO)res.getBody();
+                                i=3;
+                                break;
+                            }catch(Exception e){
+                                try{
+                                    ResponseEntity<?> res = invoiceService.doPayment(paymentInfo);
+                                    InvoiceDTO invoice = (InvoiceDTO)res.getBody();
+                                    i=3;
+                                    break;
+                                }catch(Exception ex){
+                                    try{
+                                        ResponseEntity<?> res = invoiceService.doPayment(paymentInfo);
+                                        InvoiceDTO invoice = (InvoiceDTO)res.getBody();
+                                        i=3;
+                                        break;
+                                    }catch(Exception exx){
+                                        System.out.println("INTENTO DE PAGO AUTOMATICO FALLIDO PARA EL NEGOCIO: "+business.getBusinessId()+" -- INTENTO: "+(i+1));
+                                        if(i==2){
+                                            System.out.println("FALLO DEFINITIVO DE PAGO AUTOMATICO PARA EL NEGOCIO: "+business.getBusinessId());
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             } catch (Exception e) {

@@ -24,6 +24,13 @@ public interface Sys_general_configRepository extends CrudRepository<Sys_general
                 " (SELECT configvalue FROM RMPAY.dbo.Sys_general_config WHERE configlabel = 'config.blackstone.UrlForToken') AS UrlForToken,"+
                 " (SELECT configvalue FROM RMPAY.dbo.Sys_general_config WHERE configlabel = 'config.blackstone.UrlPaymentWithToken') AS UrlPaymentWithToken;", nativeQuery = true)
     public Object[] getBlackStoneConfig();
+    @Query(value = "SELECT " + 
+                    "    (SELECT configvalue FROM RMPAY.dbo.Sys_general_config WHERE configlabel = 'config.athmovil.UrlPayment') AS UrlPayment, " + 
+                                    "    (SELECT configvalue FROM RMPAY.dbo.Sys_general_config WHERE configlabel = 'config.athmovil.UrlFindPayment') AS UrlFindPayment, " + 
+                                                    "    (SELECT configvalue FROM RMPAY.dbo.Sys_general_config WHERE configlabel = 'config.athmovil.UrlAuthorization') AS UrlAuthorization, " + 
+                "    (SELECT configvalue FROM RMPAY.dbo.Sys_general_config WHERE configlabel = 'config.athmovil.PublicToken') AS PublicToken, " + 
+                "    (SELECT configvalue FROM RMPAY.dbo.Sys_general_config WHERE configlabel = 'config.athmovil.UrlCancelPayment') AS UrlCancelPayment", nativeQuery = true)
+    public Object[] getATHMovilConfig();
     /**
      * Retrieves email configuration data from the database.
      *

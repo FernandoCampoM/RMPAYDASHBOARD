@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.services.DTO;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 import lombok.AllArgsConstructor;
@@ -12,6 +13,6 @@ public class ResellerAcountSold {
     private Long resellerSalesId;
     private String merchantId;
     private String merchantName;
-    private LocalDate expirationDate;
-    private LocalDate lastTransmission;
+    private Instant expirationDate;
+    private Instant lastTransmission;
 }

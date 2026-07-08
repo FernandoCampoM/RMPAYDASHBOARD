@@ -2,6 +2,20 @@
     "configurations": [
         {
             "type": "java",
+            "name": "RmpaydashboardApplication",
+            "request": "launch",
+            "mainClass": "com.retailmanager.rmpaydashboard.RmpaydashboardApplication",
+            "projectName": "rmpayservice"
+        },
+        {
+            "type": "java",
+            "name": "Utils",
+            "request": "launch",
+            "mainClass": "com.retailmanager.rmpaydashboard.utils.Utils",
+            "projectName": "rmpaydashboard"
+        },
+        {
+            "type": "java",
             "name": "Spring Boot-RmpaydashboardApplication<rmpaydashboard>",
             "request": "launch",
             "cwd": "${workspaceFolder}",

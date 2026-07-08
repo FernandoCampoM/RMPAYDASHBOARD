@@ -22,7 +22,8 @@ public enum CodigoError {
         INVALID_DATEORTIME("GC-0013",
                         "La fecha o la hora no son validas , por favor verifique la fecha o la hora y vuelva a intentarlo"),
                         INVALID_TOKEN("GC-0012",
-                        "Token no valido, el token no pertenece a ningun empleado"),;
+                        "Token no valido, el token no pertenece a ningun empleado"),
+        DATA_INCONSISTENCY("GC-0014", "Inconsistencia en los datos proporcionadosSS"),;
                         private final String codigo;
         private final String llaveMensaje;
 }

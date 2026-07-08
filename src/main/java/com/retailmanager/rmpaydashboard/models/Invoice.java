@@ -47,5 +47,7 @@ public class Invoice {
     @Column(columnDefinition = "VARCHAR(MAX)", nullable = true)
     private String paymentDescription;
     private Long serviceId;
+    @Column(columnDefinition = "VARCHAR(MAX)", nullable = true)
+    private String ATHMPaymentDetails;
 
 }

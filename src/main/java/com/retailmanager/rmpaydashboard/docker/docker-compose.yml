@@ -19,7 +19,7 @@ services:
       SQL_USER: SA
       SQL_PASSWORD: Colombia@602
       spring_profiles_active: docker
-      hibernate_ddl_auto: create
+      hibernate_ddl_auto: update
     ports:
       - "9094:9092"
     volumes:

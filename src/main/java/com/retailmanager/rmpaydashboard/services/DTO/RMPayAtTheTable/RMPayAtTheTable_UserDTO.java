@@ -38,6 +38,7 @@ public class RMPayAtTheTable_UserDTO {
     
     @Pattern(regexp = "^[A-Za-z0-9._-]+$", message = "{userPayAtTheTable.username.pattern}")
     private String username;
+    private String tokenATHMovil;
     @NotBlank(message = "{userPayAtTheTable.password.notBlank}")
     //@Size(min = 8, max = 20, message = "{userPayAtTheTable.password.size}")
     //@Pattern(regexp = "^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,20}$", 

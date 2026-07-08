@@ -12,7 +12,22 @@ public interface IUsersBusinessService {
     public ResponseEntity<?> save(UsersBusinessDTO prmUsersBusiness);
     public ResponseEntity<?> update(Long userBusinessId, UsersBusinessDTO prmUsersBusiness);
     public boolean delete(Long userBusinessId);
-    public ResponseEntity<?> findById(Long userBusinessId);
+    /**
+     * Finds a user by their business ID.
+     *
+     * @param  userBusinessId	the ID of the user's business
+     * @return         		the ResponseEntity containing the user's business details or a BAD_REQUEST response
+     */
+    public ResponseEntity<?> findById(Long userBusinessId)
+    ;
+    /**
+     * Finds a user by their terminal ID.
+     *
+     * @param  terminalId  the ID of the terminal
+     * @return         		the ResponseEntity containing the user's business details or a BAD_REQUEST response
+     */
+    public ResponseEntity<?> findByTerminalId(String terminalId)
+    ;
     public ResponseEntity<?> updateEnable(Long userBusinessId, boolean enable);
     public ResponseEntity<?> findByBusiness(Long idBusiness);
     public ResponseEntity<?> updatePermission(Long idUser, Long idPermission, boolean enable);

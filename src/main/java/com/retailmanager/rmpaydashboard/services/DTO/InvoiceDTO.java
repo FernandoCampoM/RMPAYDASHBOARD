@@ -27,4 +27,5 @@ public class InvoiceDTO {
     private String terminalIds;
     private Long serviceId;
     private String paymentDescription;
+    private String ATHMPaymentDetails;
 }

@@ -44,4 +44,7 @@ public class doPaymentDTO {
     private String accountNumberBank;
     private String routeNumberBank;
     private Long chequeVoidId;
+
+    //PARA PAGO CON ATH MOVIL
+    private String athPhone;
 }

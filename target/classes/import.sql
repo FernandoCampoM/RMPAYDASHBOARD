@@ -41,6 +41,15 @@ INSERT [dbo].[Sys_general_config] ([idconfig], [configlabel], [configname], [con
 GO
 INSERT [dbo].[Sys_general_config] ([idconfig], [configlabel], [configname], [configvalue]) VALUES (20, N'config.blackstone.UrlPaymentWithToken', N'URL PAYMENT WITH TOKEN', N'https://services.bmspay.com/testing/api/Transactions/SaleWithToken')
 GO
+INSERT [dbo].[Sys_general_config] ([idconfig], [configlabel], [configname], [configvalue]) VALUES (21, N'config.athmovil.UrlPayment', N'URL PAYMENT ATH MOVIL', N'https://payments.athmovil.com/api/business-transaction/ecommerce/payment');
+GO
+INSERT [dbo].[Sys_general_config] ([idconfig], [configlabel], [configname], [configvalue]) VALUES (22, N'config.athmovil.UrlFindPayment', N'URL FIND PAYMENT ATH MOVIL', N'https://payments.athmovil.com/api/business-transaction/ecommerce/business/findPayment');
+GO
+INSERT [dbo].[Sys_general_config] ([idconfig], [configlabel], [configname], [configvalue]) VALUES (23, N'config.athmovil.UrlAuthorization', N'URL AUTHORIZATION ATH MOVIL', N'https://payments.athmovil.com/api/business-transaction/ecommerce/authorization');
+GO
+INSERT [dbo].[Sys_general_config] ([idconfig], [configlabel], [configname], [configvalue]) VALUES (24, N'config.athmovil.PublicToken', N'PUBLIC TOKEN ATH MOVIL', N'5VNXT149IE3MQJUXCS53S6O5VOFD3LJERW8U2UT2');
+GO
+INSERT [dbo].[Sys_general_config] ([idconfig], [configlabel], [configname], [configvalue]) VALUES (25, N'config.athmovil.UrlCancelPayment', N'URL CANCEL PAYMENT ATH MOVIL', N'https://payments.athmovil.com/api/business-transaction/ecommerce/business/cancel');
 SET IDENTITY_INSERT [dbo].[Sys_general_config] OFF
 
 SET IDENTITY_INSERT [dbo].[Service] ON 

@@ -1,6 +1,9 @@
 package com.retailmanager.rmpaydashboard.services.DTO;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.retailmanager.rmpaydashboard.models.Product;
 
 import jakarta.validation.constraints.*;
@@ -37,6 +40,7 @@ public class ProductDTO {
     
     private Long idCategory;
     private String nameCategory;
+    private Long position;
     private Long idBusiness;
     @Size(max = 255, message = "{product.code.max}")
     @NotBlank(message = "{product.code.empty}")
@@ -67,6 +71,10 @@ public class ProductDTO {
     private Boolean enable;
 
     private int suggestedPurchase;
+    //@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    private Instant createdAt;
+    //@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    private Instant updatedAt;
 
     public static ProductDTO tOProduct(Product product) {
         ProductDTO objProduct = new ProductDTO();
@@ -85,6 +93,8 @@ public class ProductDTO {
         objProduct.setMaximumLevel(product.getMaximumLevel());
         objProduct.setEnable(product.isEnable());
         objProduct.setSuggestedPurchase(product.getMaximumLevel() - product.getQuantity());
+        objProduct.setCreatedAt(product.getCreatedAt());
+        objProduct.setUpdatedAt(product.getUpdatedAt());
         return objProduct;
     }
 }

@@ -9,6 +9,7 @@ public interface ICategoryService   {
     public ResponseEntity<?> update(Long categoryId, CategoryDTO prmCategory);
     public boolean delete(Long categoryId);
     public ResponseEntity<?> findById(Long categoryId);
-    public ResponseEntity<?> findByName(String name);
+    public ResponseEntity<?> findByName(String name, Long businessId);
     public ResponseEntity<?> updateEnable(Long categoryId, boolean enable);
+    public ResponseEntity<?> findByBusinessId(Long businessId);
 }

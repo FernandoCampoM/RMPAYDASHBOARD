@@ -1,8 +1,13 @@
 package com.retailmanager.rmpaydashboard.services.DTO;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.retailmanager.rmpaydashboard.models.Transactions;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,45 +16,80 @@ import lombok.Setter;
 @Getter @Setter @AllArgsConstructor @NoArgsConstructor
 public class TransactionDTO {
 
-    @NotBlank(message = "{transaction.date.notBlank}")
-    private String date;
+    @NotBlank(message = "{transaction.id.notblank}")
+ private String id;
+ private String account;
 
-    @NotBlank(message = "{transaction.paymentType.notBlank}")
-    private String paymentType;
+ @NotNull(message = "{transaction.amount.notnull}")
+ private Double amount;
+ private String authCode;
 
-    @NotNull(message = "{transaction.amount.notNull}")
-    private Double amount;
+ private String batchNo;
 
-    private String state;
+ private String cardType;
 
-    //@NotNull(message = "{transaction.saleId.notNull}")
-    //private Long saleId;
+ private Double changeChash;
 
-    private Double changeChash;
+ private Instant date;
 
-    @Size(max = 255, message = "{transaction.refId.size}")
-    private String refId = "";
+ private String entryMode;
 
-    @Size(max = 255, message = "{transaction.account.size}")
-    private String account = "";
+ private String globalUId;
 
-    @Size(max = 255, message = "{transaction.cardType.size}")
-    private String cardType = "";
+ @NotBlank(message = "{transaction.paymentType.notblank}")
+ private String paymentType;
 
-    @Size(max = 255, message = "{transaction.authCode.size}")
-    private String authCode = "";
+ private String refId;
 
-    @Size(max = 255, message = "{transaction.batchNo.size}")
-    private String batchNo = "";
+ private String state;
 
-    @Size(max = 255, message = "{transaction.entryMode.size}")
-    private String entryMode = "";
+ @NotNull(message = "{transaction.saleId.notnull}")
+ private String saleId;
+ @NotNull(message = "{transaction.remoto.notnull}")
+ private Integer remoto;
 
-    @Size(max = 255, message = "{transaction.globalUid.size}")
-    private String globalUid = "";
+ private SaleDTO infoSale;
 
-    private SaleDTO infoSale;
+ private Double cashRounding;
     
-
+public Transactions toTransactions(){
+    Transactions transaction = new Transactions();
+    transaction.setId(this.id);
+    transaction.setAccount(this.account);
+    transaction.setAmount(this.amount);
+    transaction.setAuthCode(this.authCode);
+    transaction.setBatchNo(this.batchNo);
+    transaction.setCardType(this.cardType);
+    transaction.setChangeChash(this.changeChash);
+    transaction.setDate(this.date);
+    transaction.setEntryMode(this.entryMode);
+    transaction.setGlobalUId(this.globalUId);
+    transaction.setPaymentType(this.paymentType);
+    transaction.setRefId(this.refId);
+    transaction.setState(this.state);
+    transaction.setRemoto(this.remoto);
+    transaction.setCashRounding(this.cashRounding);
+    return transaction;
+}
+public static TransactionDTO fromTransactions(Transactions transaction){
+    TransactionDTO transactionDTO=new TransactionDTO();
+    transactionDTO.setId(transaction.getId());
+    transactionDTO.setAccount(transaction.getAccount());
+    transactionDTO.setAmount(transaction.getAmount());
+    transactionDTO.setAuthCode(transaction.getAuthCode());
+    transactionDTO.setBatchNo(transaction.getBatchNo());
+    transactionDTO.setCardType(transaction.getCardType());
+    transactionDTO.setChangeChash(transaction.getChangeChash());
+    transactionDTO.setDate(transaction.getDate());
+    transactionDTO.setEntryMode(transaction.getEntryMode());
+    transactionDTO.setGlobalUId(transaction.getGlobalUId());
+    transactionDTO.setPaymentType(transaction.getPaymentType());
+    transactionDTO.setRefId(transaction.getRefId());
+    transactionDTO.setState(transaction.getState());
+    transactionDTO.setSaleId(transaction.getSale().getSaleID());
+    transactionDTO.setRemoto(transaction.getRemoto());
+    transactionDTO.setCashRounding(transaction.getCashRounding());
+    return transactionDTO;
+}
     // Constructor, getters y setters
 }

@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,18 +12,19 @@ import lombok.Setter;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class DailySummaryDTO {
-    private double totalSales=0;
-    private double totalRefunds = 0;
-    private double benefit = 0;
-    private double totalTips = 0;
-    private double stateTax = 0;
-    private double estimatedRedTax = 0;
-    private double municipalTax = 0;
+    private BigDecimal totalSales=BigDecimal.ZERO;
+    private BigDecimal totalRefunds = BigDecimal.ZERO;
+    private BigDecimal benefit = BigDecimal.ZERO;
+    private BigDecimal totalTips = BigDecimal.ZERO;
+    private BigDecimal stateTax = BigDecimal.ZERO;
+    private BigDecimal estimatedRedTax = BigDecimal.ZERO;
+    private BigDecimal municipalTax = BigDecimal.ZERO;
     //retorna una lista de objetos category, totalAmount
-    private List<HashMap<String,String>> salesByCategory= new ArrayList<>();
+    List<CategoryNetSalesProjection> salesByCategory= new ArrayList<>();
+    List<CategoryNetSalesProjection> earningsByCategory= new ArrayList<>();
     //retorna una lista de objetos name, quantity, totalAmount, benefit
-    private List<HashMap<String,String>> bestSellingProducts= new ArrayList<>();
-    private List<HashMap<String,String>> bestSellingPayMethods= new ArrayList<>();
+    List<BestSellingItemProjection> bestSellingProducts= new ArrayList<>();
+    private List<PaymentNetProjection> bestSellingPayMethods= new ArrayList<>();
     private List<HashMap<String,String>> refundsSummay= new ArrayList<>();
     
 }

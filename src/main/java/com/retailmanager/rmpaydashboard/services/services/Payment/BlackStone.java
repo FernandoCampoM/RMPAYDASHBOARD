@@ -209,6 +209,7 @@ public class BlackStone implements IBlackStoneService {
             try {
 
                 String response = ConsumerApi.consumeAPI(reqBS.getUrlForToken(), pd);
+                System.out.println("Response from getToken: " + response);
                 return ConverterJson.convertStr2RespJson(response);
             } catch (ConsumeAPIException e) {
                 System.err.println("Error: " + e);

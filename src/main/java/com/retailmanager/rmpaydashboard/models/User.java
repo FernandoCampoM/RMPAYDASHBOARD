@@ -1,6 +1,6 @@
 package com.retailmanager.rmpaydashboard.models;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 
 import com.retailmanager.rmpaydashboard.enums.Rol;
@@ -41,9 +41,9 @@ public class User {
     @Column(nullable = false)
     private boolean enable=true;
     @Column(nullable = true)
-    private LocalDate registerDate;
+    private Instant registerDate;
     @Column(nullable = true)
-    private LocalDate lastLogin;
+    private Instant lastLogin;
     @Column(nullable = true)
     private String tempAuthId;
 

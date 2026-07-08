@@ -1,24 +1,7 @@
 package com.retailmanager.rmpaydashboard.services.services.TerminalService;
 
-import java.text.DecimalFormat;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
-
-import org.modelmapper.ModelMapper;
-import org.modelmapper.TypeToken;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.ConsumeAPIException;
+import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.DataInconsistencyException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadNoExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadYaExisteException;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.TerminalDisabled;
@@ -30,6 +13,7 @@ import com.retailmanager.rmpaydashboard.models.Terminal;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.InvoiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.ServiceRepository;
+import com.retailmanager.rmpaydashboard.repositories.ShiftReporsitory;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.BuyTerminalDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalDTO;
@@ -39,6 +23,25 @@ import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailSer
 import com.retailmanager.rmpaydashboard.services.services.Payment.IBlackStoneService;
 import com.retailmanager.rmpaydashboard.services.services.Payment.data.ResponseJSON;
 import com.retailmanager.rmpaydashboard.services.services.Payment.data.ResponsePayment;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeToken;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.text.DecimalFormat;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.Random;
+import java.util.UUID;
 
 @org.springframework.stereotype.Service
 public class TerminalService implements ITerminalService {
@@ -57,6 +60,8 @@ public class TerminalService implements ITerminalService {
     private IEmailService emailService;
     @Autowired
     private InvoiceRepository serviceDBInvoice;
+    @Autowired
+    private ShiftReporsitory shiftReporsitory;
 
     DecimalFormat formato = new DecimalFormat("#.##");
     String msgError = "";
@@ -67,17 +72,17 @@ public class TerminalService implements ITerminalService {
      *
      * @param prmTerminal the TerminalDTO object to be saved
      * @return a response entity containing the saved TerminalDTO or an error
-     *         message
+     * message
      */
     @Override
     @Transactional
     public ResponseEntity<?> save(TerminalDTO prmTerminal) {
-        
+
         String terminalId = prmTerminal.getTerminalId();
-        Terminal terminal=null;
+        Terminal terminal = null;
         if (terminalId != null) {
             terminal = this.serviceDBTerminal.findById(terminalId).orElse(null);
-            if (terminal==null) {
+            if (terminal == null) {
                 EntidadNoExisteException objExeption = new EntidadNoExisteException(
                         "El terminal con terminalId " + prmTerminal.getTerminalId() + " no existe en la Base de datos");
                 throw objExeption;
@@ -85,18 +90,18 @@ public class TerminalService implements ITerminalService {
         } else {
             throw new EntidadNoExisteException("El terminalId no puede ser nulo");
         }
-        
-        if(!terminal.isEnable()){
+
+        if (!terminal.isEnable()) {
             throw new TerminalDisabled("El terminal con terminalId " + prmTerminal.getTerminalId() + " se encuentra deshabilitado");
         }
-        if(terminal.getExpirationDate()!=null && terminal.getExpirationDate().isBefore(LocalDate.now())){
+        if (terminal.getExpirationDate() != null && terminal.getExpirationDate().isBefore(Instant.now())) {
             throw new TerminalDisabled("El terminal con terminalId " + prmTerminal.getTerminalId() + " ha expirado");
         }
-        if(terminal.getBusiness().getBusinessId()!=prmTerminal.getBusinesId()){
+        if (terminal.getBusiness().getBusinessId() != prmTerminal.getBusinesId()) {
             throw new TerminalDisabled("El terminal con terminalId " + prmTerminal.getTerminalId() + " no pertenece aal negocio con businessId " + prmTerminal.getBusinesId());
         }
 
-        
+
         ResponseEntity<?> rta;
         Long businessId = prmTerminal.getBusinesId();
         if (businessId != null) {
@@ -111,8 +116,8 @@ public class TerminalService implements ITerminalService {
                 terminal.setEnable(prmTerminal.getEnable());
             }
         }
-        terminal=this.serviceDBTerminal.save(terminal);
-        
+        terminal = this.serviceDBTerminal.save(terminal);
+
         TerminalDTO terminalDTO = this.mapper.map(terminal, TerminalDTO.class);
         if (terminalDTO != null) {
 
@@ -187,12 +192,19 @@ public class TerminalService implements ITerminalService {
             Optional<Terminal> optional = this.serviceDBTerminal.findById(terminalId);
             if (optional.isPresent()) {
                 Terminal objTerminal = optional.get();
-                if (objTerminal != null) {
-                    objTerminal.setSerial(null);
-                    this.serviceDBTerminal.save(objTerminal);
-                    bandera = true;
+
+                int contShift = shiftReporsitory.countShiftByBusinessIdAndSerialAndOpenShift(
+                        objTerminal.getBusiness().getBusinessId(),
+                        objTerminal.getSerial(),
+                        true);
+
+                if (contShift > 0) {
+                    throw new DataInconsistencyException("No se puede liberal el terminal, tiene turnos abiertos");
                 }
 
+                objTerminal.setSerial(null);
+                this.serviceDBTerminal.save(objTerminal);
+                bandera = true;
             }
         }
         return bandera;
@@ -203,7 +215,7 @@ public class TerminalService implements ITerminalService {
      *
      * @param terminalId the ID of the terminal to find
      * @return a response entity with the terminal DTO if found, or an exception if
-     *         not found
+     * not found
      */
     @Override
     @Transactional(readOnly = true)
@@ -260,7 +272,7 @@ public class TerminalService implements ITerminalService {
             Optional<Terminal> optional = this.serviceDBTerminal.findById(terminalId);
             if (optional.isPresent()) {
                 if (optional.get().getExpirationDate() == null
-                        || (enable && optional.get().getExpirationDate().isBefore(LocalDate.now()) == true)) {
+                        || (enable && optional.get().getExpirationDate().isBefore(Instant.now()) == true)) {
                     return new ResponseEntity<Boolean>(false, HttpStatus.PAYMENT_REQUIRED);
                 }
                 this.serviceDBTerminal.updateEnable(terminalId, enable);
@@ -277,7 +289,7 @@ public class TerminalService implements ITerminalService {
     public ResponseEntity<?> buyTerminal(BuyTerminalDTO prmTerminal) {
 
         Double amount = 0.0;
-        Double stateTax=0.0;
+        Double stateTax = 0.0;
         Double serviceValue = 0.0;
         ResponsePayment respPayment;
         String serviceReferenceNumber = null;
@@ -290,7 +302,7 @@ public class TerminalService implements ITerminalService {
         Business objBusiness = null;
         Terminal objTerminal = this.mapper.map(prmTerminal, Terminal.class);
         objTerminal.setTerminalId(getTerminalId());
-        objTerminal.setRegisterDate(LocalDate.now());
+        objTerminal.setRegisterDate(Instant.now());
         Long businessId = prmTerminal.getBusinesId();
         EmailBodyData objEmailBodyData = mapper.map(prmTerminal, EmailBodyData.class);
         objEmailBodyData.setAdditionalTerminals(1);
@@ -382,29 +394,29 @@ public class TerminalService implements ITerminalService {
                             objError.put("msg", "No se pudo registrar el pago con la tarjeta de credito");
                             return new ResponseEntity<HashMap<String, String>>(objError, HttpStatus.NOT_ACCEPTABLE);
                         }
-                        if(prmTerminal.isAutomaticPayments()){
-                            try{
-                                ResponseJSON objToken=blackStoneService.getToken(objBusiness.getAddress().getZipcode(),
-                                prmTerminal.getCreditcarnumber().replaceAll("-", ""),
-                                prmTerminal.getExpDateMonth() + prmTerminal.getExpDateYear(),
-                                prmTerminal.getNameoncard(),
-                                prmTerminal.getSecuritycode(), null, userTransactionNumber);
-                                if(objToken.getResponseCode()==200){
-                                    PaymentData objPaymentData=new PaymentData();
+                        if (prmTerminal.isAutomaticPayments()) {
+                            try {
+                                ResponseJSON objToken = blackStoneService.getToken(objBusiness.getAddress().getZipcode(),
+                                        prmTerminal.getCreditcarnumber().replaceAll("-", ""),
+                                        prmTerminal.getExpDateMonth() + prmTerminal.getExpDateYear(),
+                                        prmTerminal.getNameoncard(),
+                                        prmTerminal.getSecuritycode(), null, userTransactionNumber);
+                                if (objToken.getResponseCode() == 200) {
+                                    PaymentData objPaymentData = new PaymentData();
                                     objPaymentData.setToken(objToken.getToken());
                                     objPaymentData.setExpDate(prmTerminal.getExpDateMonth() + prmTerminal.getExpDateYear());
                                     objPaymentData.setNameOnCard(prmTerminal.getNameoncard());
                                     objPaymentData.setCvn(prmTerminal.getSecuritycode());
-                                    objPaymentData.setLast4Digits(prmTerminal.getCreditcarnumber().replaceAll("-", "").substring(prmTerminal.getCreditcarnumber().length()-4));
+                                    objPaymentData.setLast4Digits(prmTerminal.getCreditcarnumber().replaceAll("-", "").substring(prmTerminal.getCreditcarnumber().length() - 4));
                                     objBusiness.setPaymentData(objPaymentData);
                                 }
-                            
+
                             } catch (Exception e) {
-                                System.out.println("Error: No se pudo obtener el token para guardar el token de pago automatico: "+e.getMessage());
+                                System.out.println("Error: No se pudo obtener el token para guardar el token de pago automatico: " + e.getMessage());
                             }
-                            
+
                         }
-                        existBusiness.get().setLastPayment(LocalDate.now());
+                        existBusiness.get().setLastPayment(Instant.now());
                         this.serviceDBBusiness.save(existBusiness.get());
                         serviceReferenceNumber = respPayment.getServiceReferenceNumber();
                         objEmailBodyData.setReferenceNumber(serviceReferenceNumber);
@@ -415,7 +427,7 @@ public class TerminalService implements ITerminalService {
         }
         objTerminal.setAutomaticPayments(prmTerminal.isAutomaticPayments());
         objTerminal.setEnable(true);
-        objTerminal.setExpirationDate(LocalDate.now().plusDays(objService.getDuration()));
+        objTerminal.setExpirationDate(Instant.now().plus(Duration.ofDays(objService.getDuration())));
         objTerminal.setSerial(null);
         objTerminal.setName(objTerminal.getTerminalId().toString());
         Invoice objInvoice = new Invoice();
@@ -443,12 +455,12 @@ public class TerminalService implements ITerminalService {
                     objTerDoPay.setServiceDescription("Terminal Principal ID [" + objTerminal.getTerminalId() + "] - "
                             + objService.getServiceName() + " $"
                             + String.valueOf(formato.format(serviceValue)));
-                            objTerminal.setLastPaymentValue(serviceValue);
+                    objTerminal.setLastPaymentValue(serviceValue);
                 } else {
                     objTerDoPay.setServiceDescription("Terminal Adicional ID [" + objTerminal.getTerminalId() + "] - "
                             + objService.getServiceName() + " $"
                             + String.valueOf(formato.format(serviceValue)));
-                            objTerminal.setLastPaymentValue(serviceValue);
+                    objTerminal.setLastPaymentValue(serviceValue);
                 }
                 objInvoice.setPaymentDescription("[ \"" + objTerDoPay.getServiceDescription() + "\"] ");
                 objEmailBodyData.setServiceDescription(objTerDoPay.getServiceDescription());
@@ -461,7 +473,7 @@ public class TerminalService implements ITerminalService {
                 emailService.notifyNewTerminal(objEmailBodyData);
                 break;
             case "ATHMOVIL":
-                objTerminal.setExpirationDate(null);
+                objTerminal.setExpirationDate(Instant.now().minus(Duration.ofDays(1)));
                 objTerminal.setPayment(false);
                 objTerminal = this.serviceDBTerminal.save(objTerminal);
                 objInvoice.setDate(LocalDate.now());
@@ -479,12 +491,12 @@ public class TerminalService implements ITerminalService {
                     objTerDoPay.setServiceDescription("Terminal Principal ID [" + objTerminal.getTerminalId() + "] - "
                             + objService.getServiceName() + " $"
                             + String.valueOf(formato.format(serviceValue)));
-                            objTerminal.setLastPaymentValue(serviceValue);
+                    objTerminal.setLastPaymentValue(serviceValue);
                 } else {
                     objTerDoPay.setServiceDescription("Terminal Adicional ID [" + objTerminal.getTerminalId() + "] - "
                             + objService.getServiceName() + " $"
                             + String.valueOf(formato.format(serviceValue)));
-                            objTerminal.setLastPaymentValue(serviceValue);
+                    objTerminal.setLastPaymentValue(serviceValue);
                 }
                 objInvoice.setPaymentDescription("[ \"" + objTerDoPay.getServiceDescription() + "\"] ");
                 objEmailBodyData.setServiceDescription(objTerDoPay.getServiceDescription());
@@ -497,7 +509,7 @@ public class TerminalService implements ITerminalService {
                 emailService.notifyNewTerminal(objEmailBodyData);
                 break;
             case "BANK-ACCOUNT":
-                objTerminal.setExpirationDate(null);
+                objTerminal.setExpirationDate(Instant.now().minus(Duration.ofDays(1)));
                 objTerminal.setPayment(false);
                 objTerminal = this.serviceDBTerminal.save(objTerminal);
                 objInvoice.setDate(LocalDate.now());
@@ -517,12 +529,12 @@ public class TerminalService implements ITerminalService {
                     objTerDoPay.setServiceDescription("Terminal Principal ID [" + objTerminal.getTerminalId() + "] - "
                             + objService.getServiceName() + " $"
                             + String.valueOf(formato.format(serviceValue)));
-                            objTerminal.setLastPaymentValue(serviceValue);
+                    objTerminal.setLastPaymentValue(serviceValue);
                 } else {
                     objTerDoPay.setServiceDescription("Terminal Adicional ID [" + objTerminal.getTerminalId() + "] - "
                             + objService.getServiceName() + " $"
                             + String.valueOf(formato.format(serviceValue)));
-                            objTerminal.setLastPaymentValue(serviceValue);
+                    objTerminal.setLastPaymentValue(serviceValue);
                 }
                 objInvoice.setPaymentDescription("[ \"" + objTerDoPay.getServiceDescription() + "\"] ");
                 objEmailBodyData.setServiceDescription(objTerDoPay.getServiceDescription());
@@ -553,12 +565,12 @@ public class TerminalService implements ITerminalService {
                     objTerDoPay.setServiceDescription("Terminal Principal ID [" + objTerminal.getTerminalId() + "] - "
                             + objService.getServiceName() + " $"
                             + String.valueOf(formato.format(serviceValue)));
-                            objTerminal.setLastPaymentValue(serviceValue);
+                    objTerminal.setLastPaymentValue(serviceValue);
                 } else {
                     objTerDoPay.setServiceDescription("Terminal Adicional ID [" + objTerminal.getTerminalId() + "] - "
                             + objService.getServiceName() + " $"
                             + String.valueOf(formato.format(serviceValue)));
-                            objTerminal.setLastPaymentValue(serviceValue);
+                    objTerminal.setLastPaymentValue(serviceValue);
                 }
                 objInvoice.setPaymentDescription("[ \"" + objTerDoPay.getServiceDescription() + "\"] ");
                 objEmailBodyData.setServiceDescription(objTerDoPay.getServiceDescription());
@@ -699,7 +711,7 @@ public class TerminalService implements ITerminalService {
             Optional<Business> optional = this.serviceDBBusiness.findById(businessId);
             if (optional.isPresent()) {
                 listTerminalDTO = this.mapper.map(
-                        this.serviceDBTerminal.findByBusinessAndExpirationDateLessThan(optional.get(), LocalDate.now()),
+                        this.serviceDBTerminal.findByBusinessAndExpirationDateLessThan(optional.get(), Instant.now()),
                         new TypeToken<List<TerminalDTO>>() {
                         }.getType());
                 return new ResponseEntity<List<TerminalDTO>>(listTerminalDTO, HttpStatus.OK);
@@ -709,6 +721,7 @@ public class TerminalService implements ITerminalService {
                 "El Business con businessId " + businessId + " no existe en la Base de datos");
         throw objExeption;
     }
+
     /**
      * Generates a unique Terminal ID.
      *
@@ -721,19 +734,34 @@ public class TerminalService implements ITerminalService {
         //long currentTimeMillis = System.currentTimeMillis();
         //long generatedId = currentTimeMillis + randomInt;
         Terminal terminal = null;
-        int randomInt=0;
-        String formattedInt="00000";
-        do{
+        int randomInt = 0;
+        String formattedInt = "00000";
+        do {
             randomInt = random.nextInt(99999); // Agrega una aleatoriedad para reducir colisiones
             formattedInt = String.format("%05d", randomInt);
-            String terminalId = "RM"+formattedInt;
+            String terminalId = "RM" + formattedInt;
             terminal = this.serviceDBTerminal.findById(terminalId).orElse(null);
-            if(terminal==null){
+            if (terminal == null) {
                 return terminalId;
             }
-        }while(terminal!=null);
+        } while (terminal != null);
 
-        return "RM"+formattedInt;
+        return "RM" + formattedInt;
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<?> updateAutomaticPayments(String idTerminal, Boolean status) {
+        if (idTerminal != null) {
+            Optional<Terminal> optional = this.serviceDBTerminal.findById(idTerminal);
+            if (optional.isPresent()) {
+                this.serviceDBTerminal.updateAutomaticPayments(idTerminal, status);
+                return new ResponseEntity<Boolean>(true, HttpStatus.OK);
+            }
+        }
+        EntidadNoExisteException objExeption = new EntidadNoExisteException(
+                "El Terminal con terminalId " + idTerminal + " no existe en la Base de datos");
+        throw objExeption;
     }
 
 }

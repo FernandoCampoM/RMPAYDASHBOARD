@@ -118,6 +118,14 @@ public class ProductsController {
     public ResponseEntity<?> findByCategory(@PageableDefault(size = 200,page = 0) Pageable pageable,@Valid @RequestBody List<Long> categoryIds){
         return productService.findByCategory(categoryIds, pageable);
     }
+    @GetMapping("/products/byBusiness/{businessId}")
+    public ResponseEntity<?> findByBusiness(@PageableDefault(size = 200,page = 0) Pageable pageable,@PathVariable Long businessId){
+        return productService.findAllByBusinessId(businessId, pageable);
+    }
+    @GetMapping("/products/allByBusiness/{businessId}")
+    public ResponseEntity<?> findaLLByBusiness(@PathVariable Long businessId){
+        return productService.findAllByBusinessId(businessId);
+    }
     @PostMapping("/products/inventory")
     public ResponseEntity<?> receiveInventory(@Valid @RequestBody InventoryReceiptDTO prmInventoryReceipt){
         return productService.receiveInventory(prmInventoryReceipt);

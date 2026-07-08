@@ -20,4 +20,21 @@ public interface IEmailService {
     public void priorNotificationEmail(String email,String userName, String businessName, List<String> services);
     public void lastDayNotificationEmail(String email,String userName, String businessName, List<String> services);
     public void beforeNotificationEmail(String email,String userName, String businessName, List<String> services);
+    public void testEmailService(EmailBodyData emailData);
+public void sendHtmlEmailWithAttachmentAndCCO(String fromEmail, List<String> toList, String subject, String htmlBody, List<String> cc, byte[] attachmentData, String attachmentFileName);
+public void sendHtmlEmailWithAttachmentAndCCO(
+    String smtpHost,
+    int smtpPort,
+    String smtpUsername,
+    String smtpPassword,
+    boolean smtpAuth,
+    boolean startTls,
+    String fromEmail,
+    List<String> toList,
+    String subject,
+    String htmlBody,
+    List<String> cc,
+    byte[] attachmentData,
+    String attachmentFileName
+);
 }

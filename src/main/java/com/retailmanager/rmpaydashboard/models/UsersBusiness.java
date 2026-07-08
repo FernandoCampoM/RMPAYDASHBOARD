@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.models;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -43,6 +44,9 @@ public class UsersBusiness {
     private Boolean download=false;
     @Column(nullable = true)
     private Double costHour;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    @Column(columnDefinition = "INT DEFAULT 2")
+    private int roleId;
     
-
 }

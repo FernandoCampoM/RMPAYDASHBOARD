@@ -1,8 +1,12 @@
 package com.retailmanager.rmpaydashboard.services.services.CategoryService;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -51,13 +55,15 @@ public class CategoryService implements ICategoryService {
                 prmCategory.setCategoryId(null);
             }
         }
-        Optional<Category> exist = this.serviceDBCategory.findOneByName(prmCategory.getName());
+        Optional<Category> exist = this.serviceDBCategory.findByNameAndBusinessId(prmCategory.getName(), prmCategory.getBusinesId());
         if(exist.isPresent()){
-            EntidadYaExisteException objExeption = new EntidadYaExisteException("La category con name "+prmCategory.getName()+" ya existe en la Base de datos");
+            EntidadYaExisteException objExeption = new EntidadYaExisteException("El negocio con Id "+prmCategory.getBusinesId()+" ya tiene la category con name "+prmCategory.getName()+" ya existe en la Base de datos");
             throw objExeption;
         }
         ResponseEntity<?> rta;
          Category objCategory= this.mapper.map(prmCategory, Category.class);
+         objCategory.setCreatedAt(Instant.now());
+            objCategory.setUpdatedAt(Instant.now());
          if(objCategory!=null){
             Long businessId=prmCategory.getBusinesId();
             if(businessId!=null){
@@ -112,12 +118,13 @@ public class CategoryService implements ICategoryService {
             }
             objCategory=exist.get();
             if(objCategory.getName().compareTo(prmCategory.getName())!=0){
-                Optional<Category> existBySerial = this.serviceDBCategory.findOneByName(prmCategory.getName());
+                Optional<Category> existBySerial = this.serviceDBCategory.findByNameAndBusinessId(prmCategory.getName(), objCategory.getBusiness().getBusinessId());
                 if(existBySerial.isPresent()){
-                    EntidadYaExisteException objExeption = new EntidadYaExisteException("La category con name "+prmCategory.getName()+" ya existe en la Base de datos");
+                    EntidadYaExisteException objExeption = new EntidadYaExisteException("El negocio con Id "+objCategory.getBusiness().getBusinessId()+" ya tiene la category con name "+prmCategory.getName()+" ya existe en la Base de datos");
                     throw objExeption;
                 }
             }
+            objCategory.setUpdatedAt(Instant.now());
              objCategory.setEnable(prmCategory.getEnable());
              objCategory.setName(prmCategory.getName());
              objCategory.setColor(prmCategory.getColor());
@@ -199,7 +206,9 @@ public class CategoryService implements ICategoryService {
 		if(categoryId!=null){
             Optional<Category> optional= this.serviceDBCategory.findById(categoryId);
             if(optional.isPresent()){
-                this.serviceDBCategory.updateEnable(categoryId, enable);
+                optional.get().setEnable(enable);
+                optional.get().setUpdatedAt(Instant.now());
+                this.serviceDBCategory.save(optional.get());
                 if(enable){
                     for(UsersBusiness usersBusiness:optional.get().getBusiness().getUsersBusiness()){
                         ubcServices.updateDownload(optional.get().getCategoryId(),usersBusiness.getUserBusinessId(),false);
@@ -221,16 +230,34 @@ public class CategoryService implements ICategoryService {
      */
     @Override
     @Transactional(readOnly = true)
-    public ResponseEntity<?> findByName(String name) {
-        if(name!=null){
-            Optional<Category> optional= this.serviceDBCategory.findOneByName(name);
+    public ResponseEntity<?> findByName(String name, Long businessId) {
+        if(name!=null && businessId!=null){
+            Optional<Category> optional= this.serviceDBCategory.findByNameAndBusinessId(name, businessId);
             if(optional.isPresent()){
                 CategoryDTO objCategoryDTO=this.mapper.map(optional.get(),CategoryDTO.class);
                 return new ResponseEntity<CategoryDTO>(objCategoryDTO,HttpStatus.OK);
             }
         }
-        EntidadNoExisteException objExeption = new EntidadNoExisteException("La category con name "+name+" no existe en la Base de datos");
+        EntidadNoExisteException objExeption = new EntidadNoExisteException("La category con name "+name+" para el negocio con businessId "+businessId+" no existe en la Base de datos");
                 throw objExeption;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> findByBusinessId(Long businessId) {
+        if(businessId!=null){
+            Optional<Business> optional= this.serviceDBBusiness.findById(businessId);
+            if(optional.isPresent()){
+                Business objBusiness=optional.get();
+                if(objBusiness!=null){
+                    List<Category> listCategory = this.serviceDBCategory.findByBusiness(objBusiness);
+                    List<CategoryDTO> listCategoryDTO = this.mapper.map(listCategory, new TypeToken<List<CategoryDTO>>(){}.getType());
+                    return new ResponseEntity<>(listCategoryDTO,HttpStatus.OK);
+                }
+            }
+        }
+        EntidadNoExisteException objExeption = new EntidadNoExisteException("El business con businessId "+businessId+" no existe en la Base de datos");
+        throw objExeption;
     }
     
 }

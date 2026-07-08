@@ -13,10 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 import com.retailmanager.rmpaydashboard.services.DTO.EmployeeAuthentication;
 import com.retailmanager.rmpaydashboard.services.DTO.EntryExitDTO;
-import com.retailmanager.rmpaydashboard.services.DTO.ShiftDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.UsersBusinessDTO;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
-import com.retailmanager.rmpaydashboard.services.services.ShiftService.IShiftService;
 import com.retailmanager.rmpaydashboard.services.services.UsersBusinessService.IUsersBusinessService;
 
 
@@ -28,8 +26,6 @@ public class UserBusinessController {
     @Autowired
     private IUsersBusinessService usersBusinessService;
 
-    @Autowired
-    private IShiftService shiftService;
 
     @Autowired IEmailService emailService;
 
@@ -81,7 +77,11 @@ public class UserBusinessController {
     @GetMapping("/userBusiness/business/{businessId}")
     public ResponseEntity<?> findByBusinessId(@Valid @PathVariable @Positive(message = "userBusinessId.positive") Long businessId) {
         return usersBusinessService.findByBusiness(businessId);
-    } 
+    }
+     @GetMapping("/userBusiness")
+    public ResponseEntity<?> findByTerminalId(@RequestParam(name = "terminalId") String terminalId) {
+        return usersBusinessService.findByTerminalId(terminalId);
+    }
 
     /**
      * A description of the entire Java function.
@@ -141,7 +141,7 @@ public class UserBusinessController {
         return usersBusinessService.getUsersBusiness(userBusinessId);
     }
     /**
-     * Updates the download category for a specific user business.
+     * Updates the download status for a specific user business.
      *
      * @param  userBusinessId  the ID of the user business
      * @return                 a ResponseEntity containing the updated user business and the HTTP status
@@ -192,10 +192,7 @@ public class UserBusinessController {
         return usersBusinessService.deleteLastActivity(userBusinessId);
     }
 
-    @PostMapping("/userBusiness/activity/shift")
-    public ResponseEntity<?> openShift(@RequestHeader("Authorization") String authToken,@Valid @RequestBody ShiftDTO prmShiftDTO) {
-        return shiftService.openShift( authToken.replace("Bearer ", ""),prmShiftDTO);
-    }
+    
     /* @GetMapping("/emailtest")
     public String eailtest() {
         this.emailService.lastDayNotificationEmail("juancampo201509@gmail.com", "juancamm", "Evolución Imparable");
