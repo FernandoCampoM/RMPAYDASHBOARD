@@ -16,6 +16,7 @@ public class AutomatedEmailScheduler {
 
     @Scheduled(cron = "0 * * * * *")
     public void runAutomatedEmailChecks() {
+        System.out.println("SMTP Ejecutando verificación de correos automatizados...");
         automatedEmailService.processDailySummaryEmails();
         automatedEmailService.processLowInventoryEmails();
     }

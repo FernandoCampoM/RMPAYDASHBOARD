@@ -1,3 +1,6 @@
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\BatchCloseReportDTO.java
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\AutomatedEmailConstants.java
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\models\AutomatedEmailLog.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\InvoiceDTO.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\SaleDTO.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\models\EntryExit.java
@@ -5,6 +8,7 @@ D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydas
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\ScheduleCalendar\ScheduleCalendarService.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\repositories\DashboardKpiProjection.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\exceptionControllers\exceptions\CodigoError.java
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\ShiftClosingEmailTemplate.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\CategoryService\ICategoryService.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\models\FileModel.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\UsersBusinessDTO.java
@@ -22,6 +26,7 @@ D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydas
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\mapper\Mapper.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\EmailService\EmailBodyData.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\EmailService\EmailConfigData.java
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\DailySummaryEmailTemplate.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\ResellerPaymentDTO.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\LogsResponseDTO.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\RegsitryBusinessDTO.java
@@ -59,6 +64,7 @@ D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydas
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\BestSellingCategoryProjection.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\repositories\BusinessRepository.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\security\Token.java
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\config\AutomatedEmailSchedulingConfig.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\BusinessConfigurationDTO.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\PaymentMethodDTO.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\doPaymentDTO.java
@@ -70,6 +76,7 @@ D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydas
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\Payment\data\FindPaymentResponse.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\Payment\data\ResponsePayment.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\RMPayAtTheTable\TerminalService\ITerminalPayAtTableService.java
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\controller\EmailController.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\EmailService\EmailConfigProjection.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\exceptionControllers\exceptions\EntidadNoExisteException.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\PaymentHistoryReport.java
@@ -108,6 +115,7 @@ D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydas
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\ScheduleCalendar\AvailableSchedulesDTO\IAvailableSchedulesService.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\Payment\data\ATHMCancelPaymentResponse.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\config\AplicationConfig.java
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\LowInventoryEmailTemplate.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\models\Service.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\EntryExitDTO.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\Payment\data\EmailData.java
@@ -124,6 +132,7 @@ D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydas
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\config\WebSecurityConfig.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\RMPayAtTheTable\RMPayAtTheTable_UserDTO.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\controller\ScheduleCalendarController.java
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\repositories\AutomatedEmailLogRepository.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\models\Terminal.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\repositories\ResellerPaymentRepository.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\controller\UserController.java
@@ -158,6 +167,7 @@ D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydas
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\controller\PaymentMethodController.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\models\enums\KPIStatus.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\ResellerAcountSold.java
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\AutomatedEmailService.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\ServiceDTO.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\UserTipsReportProjection.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\DTO\RegistryDTO.java
@@ -250,8 +260,10 @@ D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydas
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\enums\Rol.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\models\Product.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\models\Interface\LaborMetricsProjection.java
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\AutomatedEmailScheduler.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\Payment\data\ATHMPaymentResponse.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\repositories\ResellerSalesRepository.java
+D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\BatchCloseReportEmailTemplate.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\exceptionControllers\exceptions\InvalidDateOrTime.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\services\services\RMPayAtTheTable\UserServices\UserPayAtTableService.java
 D:\Trabajo\RMPAYDASBOARD\rmpaydashboard\src\main\java\com\retailmanager\rmpaydashboard\repositories\InvoiceRepository.java

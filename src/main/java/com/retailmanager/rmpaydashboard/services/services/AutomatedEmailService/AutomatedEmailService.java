@@ -377,6 +377,7 @@ public void sendShiftClosingReport(
         String businessName,
         ShiftDTO shift
 ) {
+    System.out.println("SMTP: Enviando email de cierre de turno...");
     try {
         BusinessConfiguration activeConfiguration = businessConfigurationRepository.findByKey(AutomatedEmailConstants.SHIFT_CLOSING_REPORT_ACTIVE_KEY, businessId);
         if (activeConfiguration == null || !isTrue(activeConfiguration.getValue())) {
@@ -441,6 +442,7 @@ public void sendShiftClosingReport(
 }
 @Transactional
 public ResponseEntity<?> sendBatchCloseReport(BatchCloseReportDTO report) {
+    System.out.println("SMTP: Enviando email de cierre de batch...");
     try {
         Long businessId = report.businessId();
         BusinessConfiguration activeConfiguration = businessConfigurationRepository.findByKey(AutomatedEmailConstants.BATCH_CLOSING_REPORT_ACTIVE_KEY, businessId);

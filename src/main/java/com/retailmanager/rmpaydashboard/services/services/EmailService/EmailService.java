@@ -2655,7 +2655,7 @@ public void sendHtmlEmailWithAttachmentAndCCO(
 
         System.out.println("Enviando correo por SMTP...");
         mailSender.send(message);
-        System.out.println("Correo enviado exitosamente");
+        System.out.println("Correo enviado exitosamente SMTP");
 
     } catch (Exception ex) {
         System.out.println("Error al enviar el correo por SMTP: " + ex.getMessage());
