@@ -378,6 +378,11 @@ public void sendShiftClosingReport(
         ShiftDTO shift
 ) {
     try {
+        BusinessConfiguration activeConfiguration = businessConfigurationRepository.findByKey(AutomatedEmailConstants.SHIFT_CLOSING_REPORT_ACTIVE_KEY, businessId);
+        if (activeConfiguration == null || !isTrue(activeConfiguration.getValue())) {
+            System.out.println("Shift closing report email is not active for businessId: " + businessId);
+            return;
+        }
         String smtpHost = getRequiredConfigurationValue(
                 AutomatedEmailConstants.EMAIL_SMTP_HOST_KEY,
                 businessId
@@ -438,7 +443,7 @@ public void sendShiftClosingReport(
 public ResponseEntity<?> sendBatchCloseReport(BatchCloseReportDTO report) {
     try {
         Long businessId = report.businessId();
-        BusinessConfiguration activeConfiguration = businessConfigurationRepository.findByKey(AutomatedEmailConstants.SHIFT_CLOSING_REPORT_ACTIVE_KEY, businessId);
+        BusinessConfiguration activeConfiguration = businessConfigurationRepository.findByKey(AutomatedEmailConstants.BATCH_CLOSING_REPORT_ACTIVE_KEY, businessId);
         if (activeConfiguration == null || !isTrue(activeConfiguration.getValue())) {
             HashMap<String, String> response = new HashMap<>();
             response.put("message", "Batch close report email is not active.");
