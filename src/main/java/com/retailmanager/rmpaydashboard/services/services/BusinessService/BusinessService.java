@@ -927,12 +927,15 @@ public class BusinessService implements IBusinessService {
         Double totalSales=0.0;
         for(Terminal terminal:listTerminal){
             HashMap<String, Object> activacion = new HashMap<>();
+            Service terminalService = terminal.getService();
+            String serviceName = terminalService != null ? terminalService.getServiceName() : "Sin servicio";
+            Double serviceValue = terminalService != null ? terminalService.getServiceValue() : 0.0;
             activacion.put("terminalId", terminal.getTerminalId());
             activacion.put("businesName", terminal.getBusiness().getName());
             if(terminal.getLastPaymentValue()==null){
                 terminal.setLastPaymentValue(0.0);
             }
-            if(terminal.getRegisterDate()!=null && terminal.getLastPayment()!=null ){
+            if(terminal.getRegisterDate()!=null && terminal.getLastPayment()!=null && terminalService != null){
                 totalSales+=terminal.getLastPaymentValue();
 
                 boolean sameMonth = YearMonth.from(terminal.getRegisterDate().atZone(ZoneOffset.UTC))
@@ -940,9 +943,9 @@ public class BusinessService implements IBusinessService {
 
                 if(sameMonth){
                     if(terminal.isPrincipal()){
-                        activacion.put("serviceName", "TERMINAL PRINCIPAL"+terminal.getService().getServiceName());
+                        activacion.put("serviceName", "TERMINAL PRINCIPAL " + serviceName);
                     }else{
-                        activacion.put("serviceName", "TERMINAL ADICIONAL "+terminal.getService().getServiceName());
+                        activacion.put("serviceName", "TERMINAL ADICIONAL " + serviceName);
                     }
                     
                 }else{
@@ -954,8 +957,8 @@ public class BusinessService implements IBusinessService {
                 }
 
             }
-            activacion.put("serviceName", terminal.getService().getServiceName());
-            activacion.put("serviceValue",terminal.getService().getServiceValue());
+            activacion.putIfAbsent("serviceName", serviceName);
+            activacion.put("serviceValue", serviceValue);
             activacion.put("user-name", terminal.getBusiness().getUser().getName());
             activacion.put("serial", terminal.getSerial());
             activacion.put("terminalName", terminal.getName());
