@@ -7,6 +7,7 @@ com\retailmanager\rmpaydashboard\services\DTO\PaymentMethodDTO.class
 com\retailmanager\rmpaydashboard\controller\FileController.class
 com\retailmanager\rmpaydashboard\services\services\ServiceService\IServiceService.class
 com\retailmanager\rmpaydashboard\services\services\UserService\UserService$3.class
+com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\BatchCloseReportDTO.class
 com\retailmanager\rmpaydashboard\models\enums\Environment.class
 com\retailmanager\rmpaydashboard\services\services\UsersBusinessService\IUsersBusinessService.class
 com\retailmanager\rmpaydashboard\services\DTO\HourlySalesDTO.class
@@ -26,6 +27,7 @@ com\retailmanager\rmpaydashboard\controller\ShiftController.class
 com\retailmanager\rmpaydashboard\services\services\Payment\data\FindPaymentReqData.class
 com\retailmanager\rmpaydashboard\repositories\TransactionsRepository.class
 com\retailmanager\rmpaydashboard\repositories\UserRepository.class
+com\retailmanager\rmpaydashboard\controller\EmailController.class
 com\retailmanager\rmpaydashboard\services\services\SaleService\SaleService$1.class
 com\retailmanager\rmpaydashboard\services\services\ProductService\IProductService.class
 com\retailmanager\rmpaydashboard\repositories\EmployeeBusinessConfigDownloadRepository.class
@@ -60,6 +62,7 @@ com\retailmanager\rmpaydashboard\models\User.class
 com\retailmanager\rmpaydashboard\repositories\EntryExitRepository.class
 com\retailmanager\rmpaydashboard\services\services\UsersBusinessService\UsersBusinesService$1.class
 com\retailmanager\rmpaydashboard\models\ScheduleListDetailedCalendar.class
+com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\BatchCloseReportEmailTemplate.class
 com\retailmanager\rmpaydashboard\models\Transactions.class
 com\retailmanager\rmpaydashboard\enums\Rol.class
 com\retailmanager\rmpaydashboard\repositories\FileRepository.class
@@ -87,6 +90,7 @@ com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\ShiftReport.class
 com\retailmanager\rmpaydashboard\services\services\Payment\data\PaymentDetailsDTO.class
 com\retailmanager\rmpaydashboard\models\UserPermission.class
 com\retailmanager\rmpaydashboard\services\mapper\ListToJsonConverter.class
+com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\BatchCloseReportDTO$TaxSummary.class
 com\retailmanager\rmpaydashboard\services\services\EmailService\EmailBodyData.class
 com\retailmanager\rmpaydashboard\config\CorsConfig.class
 com\retailmanager\rmpaydashboard\services\DTO\LogsDTO.class
@@ -96,6 +100,7 @@ com\retailmanager\rmpaydashboard\models\Interface\ShiftTransactionProjection.cla
 com\retailmanager\rmpaydashboard\services\services\BusinessConfigurationService\BusinessConfigurationService$1.class
 com\retailmanager\rmpaydashboard\RmpaydashboardApplication.class
 com\retailmanager\rmpaydashboard\models\Sys_general_config.class
+com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\BatchCloseReportDTO$Summary.class
 com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\CategoryNetSalesProjection.class
 com\retailmanager\rmpaydashboard\repositories\CategoryRepository.class
 com\retailmanager\rmpaydashboard\repositories\ResellerRepository.class
@@ -123,9 +128,11 @@ com\retailmanager\rmpaydashboard\controller\ReportsController.class
 com\retailmanager\rmpaydashboard\models\InventoryReceipt.class
 com\retailmanager\rmpaydashboard\services\services\Payment\data\ReqBlackStoneData.class
 com\retailmanager\rmpaydashboard\services\mapper\Mapper.class
+com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\DailySummaryEmailTemplate.class
 com\retailmanager\rmpaydashboard\services\services\SaleService\SaleService.class
 com\retailmanager\rmpaydashboard\repositories\UserBusiness_ProductRepository.class
 com\retailmanager\rmpaydashboard\services\services\ProductService\ProductService.class
+com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\AutomatedEmailService.class
 com\retailmanager\rmpaydashboard\services\services\ServiceService\ServiceService$1.class
 com\retailmanager\rmpaydashboard\services\DTO\PaymentDataDTO.class
 com\retailmanager\rmpaydashboard\controller\ProductsController.class
@@ -144,6 +151,7 @@ com\retailmanager\rmpaydashboard\models\UserBusiness_Product.class
 com\retailmanager\rmpaydashboard\services\DTO\ResellerDTO.class
 com\retailmanager\rmpaydashboard\controller\RMPayAtTheTable\UserPayAtTableController.class
 com\retailmanager\rmpaydashboard\models\ItemForSale.class
+com\retailmanager\rmpaydashboard\repositories\AutomatedEmailLogRepository.class
 com\retailmanager\rmpaydashboard\services\services\ServiceService\ServiceService$2.class
 com\retailmanager\rmpaydashboard\services\services\TerminalService\ITerminalService.class
 com\retailmanager\rmpaydashboard\repositories\DashboardKpiProjection.class
@@ -186,7 +194,9 @@ com\retailmanager\rmpaydashboard\repositories\TerminalRepository.class
 com\retailmanager\rmpaydashboard\services\services\TerminalService\TerminalService.class
 com\retailmanager\rmpaydashboard\repositories\ProductRepository.class
 com\retailmanager\rmpaydashboard\models\Shift.class
+com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\AutomatedEmailConstants.class
 com\retailmanager\rmpaydashboard\controller\AvailableSchedulesController.class
+com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\BatchCloseReportDTO$TaxItem.class
 com\retailmanager\rmpaydashboard\models\Product.class
 com\retailmanager\rmpaydashboard\services\services\InvoiceServices\InvoiceServices$1.class
 com\retailmanager\rmpaydashboard\repositories\ResellerSalesRepository.class
@@ -206,6 +216,7 @@ com\retailmanager\rmpaydashboard\controller\UserBusinessController.class
 com\retailmanager\rmpaydashboard\repositories\UserBusiness_CategoryRepository.class
 com\retailmanager\rmpaydashboard\services\DTO\ServiceDTO.class
 com\retailmanager\rmpaydashboard\models\PaymentData.class
+com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\LowInventoryEmailTemplate.class
 com\retailmanager\rmpaydashboard\models\EntryExit.class
 com\retailmanager\rmpaydashboard\enums\EmployeeRole.class
 com\retailmanager\rmpaydashboard\controller\UserController.class
@@ -214,6 +225,7 @@ com\retailmanager\rmpaydashboard\controller\ResellerController.class
 com\retailmanager\rmpaydashboard\models\Reseller.class
 com\retailmanager\rmpaydashboard\services\DTO\ResellerPaymentDTO.class
 com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\DailySummaryProjection.class
+com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\AutomatedEmailScheduler.class
 com\retailmanager\rmpaydashboard\services\DTO\RegistryDTO.class
 com\retailmanager\rmpaydashboard\services\services\UserService\UserService$1.class
 com\retailmanager\rmpaydashboard\services\services\Payment\data\CreditCardPayment.class
@@ -235,9 +247,11 @@ com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\BestSellingCategoryProj
 com\retailmanager\rmpaydashboard\controller\BusinessController.class
 com\retailmanager\rmpaydashboard\exceptionControllers\exceptions\InvalidDateOrTime.class
 com\retailmanager\rmpaydashboard\services\services\BusinessConfigurationService\BusinessConfigurationService.class
+com\retailmanager\rmpaydashboard\models\AutomatedEmailLog.class
 com\retailmanager\rmpaydashboard\models\Service.class
 com\retailmanager\rmpaydashboard\models\SaleReportProjection.class
 com\retailmanager\rmpaydashboard\services\services\Payment\data\ResponsePayment.class
+com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\BatchCloseReportDTO$BatchDetails.class
 com\retailmanager\rmpaydashboard\models\EmployeeBusinessConfigDownload.class
 com\retailmanager\rmpaydashboard\models\Interface\LaborMetricsProjection.class
 com\retailmanager\rmpaydashboard\controller\PaymentMethodController.class
@@ -258,6 +272,7 @@ com\retailmanager\rmpaydashboard\exceptionControllers\exceptions\MaxTerminalsRea
 com\retailmanager\rmpaydashboard\models\Sale.class
 com\retailmanager\rmpaydashboard\services\DTO\RMPayAtTheTable\RMPayAtTheTable_TerminalDTO.class
 com\retailmanager\rmpaydashboard\services\services\ServiceService\ServiceService.class
+com\retailmanager\rmpaydashboard\config\AutomatedEmailSchedulingConfig.class
 com\retailmanager\rmpaydashboard\models\enums\SyncStatus.class
 com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\DailySummaryDTO.class
 com\retailmanager\rmpaydashboard\services\services\Payment\ATHMovil.class
@@ -268,6 +283,7 @@ com\retailmanager\rmpaydashboard\services\DTO\InventoryReceiptDTO.class
 com\retailmanager\rmpaydashboard\exceptionControllers\exceptions\Error.class
 com\retailmanager\rmpaydashboard\repositories\BusinessConfigurationRepository.class
 com\retailmanager\rmpaydashboard\services\services\Payment\data\FindPaymentResponse$Data.class
+com\retailmanager\rmpaydashboard\services\services\AutomatedEmailService\ShiftClosingEmailTemplate.class
 com\retailmanager\rmpaydashboard\services\services\Payment\data\FindPaymentResponse$ItemData.class
 com\retailmanager\rmpaydashboard\config\AplicationConfig.class
 com\retailmanager\rmpaydashboard\models\Interface\TransactionDetailProjection.class
@@ -275,6 +291,7 @@ com\retailmanager\rmpaydashboard\services\DTO\TerminalDTO.class
 com\retailmanager\rmpaydashboard\models\Permission.class
 com\retailmanager\rmpaydashboard\models\Business.class
 com\retailmanager\rmpaydashboard\services\DTO\PermissionDTO.class
+com\retailmanager\rmpaydashboard\services\DTO\ReportsDTO\BatchCloseReportDTO$PaymentSummary.class
 com\retailmanager\rmpaydashboard\services\DTO\TerminalsDoPaymentDTO.class
 com\retailmanager\rmpaydashboard\services\services\FileServices\FileService.class
 com\retailmanager\rmpaydashboard\exceptionControllers\exceptions\DataInconsistencyException.class

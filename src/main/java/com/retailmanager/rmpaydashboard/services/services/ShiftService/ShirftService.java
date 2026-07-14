@@ -16,6 +16,7 @@ import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
 import com.retailmanager.rmpaydashboard.repositories.UsersAppRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.CloseShiftDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ShiftDTO;
+import com.retailmanager.rmpaydashboard.services.services.AutomatedEmailService.AutomatedEmailService;
 import com.retailmanager.rmpaydashboard.utils.DateFormater;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,8 @@ public class ShirftService implements IShiftService {
     private BusinessRepository businessRepository;
     @Autowired
     private ShiftFactory shiftFactory;
+    @Autowired
+    private AutomatedEmailService automatedEmailService;
 
     /**
      * Creates a new shift or updates an existing open shift. This method ensures
@@ -178,9 +181,12 @@ public class ShirftService implements IShiftService {
         existingShift.setSyncStatus(SyncStatus.SYNCED);
         existingShift.setLastSyncAt(Instant.now());
         Shift updatedShift = serviceDBShift.save(existingShift);
-
+        
         // 4. Retornar el DTO del turno actualizado
         ShiftDTO response = shiftFactory.toDTO(updatedShift);
+        if(!updatedShift.isOpenShifBalance()){
+            automatedEmailService.sendShiftClosingReport( updatedShift.getTerminal().getBusiness().getBusinessId(),  updatedShift.getTerminal().getBusiness().getName(), response);
+        }
         //ShiftDTO response = new ShiftDTO(updatedShift);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -336,8 +342,11 @@ public class ShirftService implements IShiftService {
         shiftToClose.setLastSyncAt(Instant.now());
 
         Shift closedShift = serviceDBShift.save(shiftToClose);
-
+        
         ShiftDTO response = shiftFactory.toDTO(closedShift);
+        if(!closedShift.isOpenShifBalance()){
+            automatedEmailService.sendShiftClosingReport( closedShift.getTerminal().getBusiness().getBusinessId(),  closedShift.getTerminal().getBusiness().getName(), response);
+        }
         //ShiftDTO response = new ShiftDTO(closedShift);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -385,6 +394,9 @@ public class ShirftService implements IShiftService {
         ));*/
         shiftToClose.setSyncStatus(SyncStatus.PENDING);
         Shift closedShift = serviceDBShift.save(shiftToClose);
+        if(!closedShift.isOpenShifBalance()){
+            automatedEmailService.sendShiftClosingReport( closedShift.getTerminal().getBusiness().getBusinessId(),  closedShift.getTerminal().getBusiness().getName(), shiftFactory.toDTO(closedShift));
+        }
         return getShiftById(closedShift.getShiftId());
     }
 
