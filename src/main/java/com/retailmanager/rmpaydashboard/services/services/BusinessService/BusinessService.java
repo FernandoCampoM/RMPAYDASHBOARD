@@ -8,11 +8,18 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
@@ -48,6 +55,12 @@ import com.retailmanager.rmpaydashboard.services.DTO.CategoryDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.RegsitryBusinessDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalsDoPaymentDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.ActivationDashboardResponseDto;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.ActivationDto;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailyTrendDto;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.RegistrationDto;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.StatusDistributionDto;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.StatusDistributionPercentageDto;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.EmailBodyData;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
 import com.retailmanager.rmpaydashboard.services.services.FileServices.IFileService;
@@ -894,84 +907,87 @@ public class BusinessService implements IBusinessService {
      * @return        a ResponseEntity containing the activations for the given month
      */
     @Override
-    @Transactional(readOnly = true)
-    public ResponseEntity<?> getActivations(Instant starDate, Instant endDate) {
-        HashMap<String, Object> result = new HashMap<>();
-        
-        List<Business> listBusiness = this.serviceDBBusiness.findAllByRegistrations(starDate, endDate);
-        List<Terminal> listTerminal = this.serviceDBTerminal.findAllByActivations(starDate, endDate);
-        //Activaciones y registraciones del mes anterior en el mismo rango de fechas
-        Instant previousStartMonth = starDate
-        .atZone(ZoneId.systemDefault())
-        .minusMonths(1)
-        .toInstant();
-        Instant previousEndMonth = endDate
-        .atZone(ZoneId.systemDefault())
-        .minusMonths(1)
-        .toInstant();
-        List<Business> lastMonthlistBusiness = this.serviceDBBusiness.findAllByRegistrations(previousStartMonth, previousEndMonth);
-        List<Terminal>  lastMonthlistTerminal = this.serviceDBTerminal.findAllByActivations(previousStartMonth, previousEndMonth); 
-        List<HashMap<String, Object>> listRegistraciones = new ArrayList<>();
-        
-        List<HashMap<String, Object>> listActivaciones = new ArrayList<>();
-        
-        for (Business business : listBusiness) {
-            HashMap<String, Object> registro = new HashMap<>();
-            registro.put("businessId", business.getBusinessId());
-            registro.put("businessName", business.getName());
-            registro.put("town",business.getAddress().getCity()); 
-            registro.put("phoneNumber", business.getBusinessPhoneNumber());
-            registro.put("user-name",business.getUser().getName());
-            listRegistraciones.add(registro);
-        }
-        Double totalSales=0.0;
-        for(Terminal terminal:listTerminal){
-            HashMap<String, Object> activacion = new HashMap<>();
-            activacion.put("terminalId", terminal.getTerminalId());
-            activacion.put("businesName", terminal.getBusiness().getName());
-            if(terminal.getLastPaymentValue()==null){
-                terminal.setLastPaymentValue(0.0);
-            }
-            if(terminal.getRegisterDate()!=null && terminal.getLastPayment()!=null ){
-                totalSales+=terminal.getLastPaymentValue();
+@Transactional(readOnly = true)
+public ResponseEntity<?> getActivations(Instant starDate, Instant endDate) {
+    // ── NEW: Activation dashboard DTO response ──────────────────
+    // Purpose : Builds activation dashboard metrics without using HashMap responses
+    // Depends on : BusinessRepository.findAllByRegistrations, TerminalRepository.findAllByActivations, Terminal fields
+    // Does NOT modify : repository contracts, entity fields, synchronous service contract
 
-                boolean sameMonth = YearMonth.from(terminal.getRegisterDate().atZone(ZoneOffset.UTC))
-                        .equals(YearMonth.from(terminal.getLastPayment().atZone(ZoneOffset.UTC)));
+    List<Business> listBusiness = this.serviceDBBusiness.findAllByRegistrations(starDate, endDate);
+    List<Terminal> listTerminal = this.serviceDBTerminal.findAllByActivations(starDate, endDate);
 
-                if(sameMonth){
-                    if(terminal.isPrincipal()){
-                        activacion.put("serviceName", "TERMINAL PRINCIPAL"+terminal.getService().getServiceName());
-                    }else{
-                        activacion.put("serviceName", "TERMINAL ADICIONAL "+terminal.getService().getServiceName());
-                    }
-                    
-                }else{
-                    if(terminal.isPrincipal()){
-                        activacion.put("serviceName", "RENOVACIÓN TERMINAL PRINCIPAL"+terminal.getService().getServiceName());
-                    }else{
-                        activacion.put("serviceName", "RENOVACIÓN TERMINAL ADICIONAL "+terminal.getService().getServiceName());
-                    }
-                }
+    Instant previousStartMonth = starDate
+            .atZone(ZoneId.systemDefault())
+            .minusMonths(1)
+            .toInstant();
 
-            }
-            activacion.put("serviceName", terminal.getService().getServiceName());
-            activacion.put("serviceValue",terminal.getService().getServiceValue());
-            activacion.put("user-name", terminal.getBusiness().getUser().getName());
-            activacion.put("serial", terminal.getSerial());
-            activacion.put("terminalName", terminal.getName());
-            listActivaciones.add(activacion);
-        }
-        result.put("totalRegistrations", listRegistraciones.size());
-        result.put("totalActivations", listActivaciones.size());
-        result.put("lastMonthRegistrations", lastMonthlistBusiness.size());
-        result.put("lastMonthActivations", lastMonthlistTerminal.size()); 
-        result.put("totalSales", totalSales);
-        result.put("registrations", listRegistraciones);
-        result.put("activations", listActivaciones);
+    Instant previousEndMonth = endDate
+            .atZone(ZoneId.systemDefault())
+            .minusMonths(1)
+            .toInstant();
 
-        return new ResponseEntity<HashMap<String, Object>>(result,HttpStatus.OK);
-        
-    }
+    List<Business> lastMonthlistBusiness = this.serviceDBBusiness.findAllByRegistrations(previousStartMonth, previousEndMonth);
+    List<Terminal> lastMonthlistTerminal = this.serviceDBTerminal.findAllByActivations(previousStartMonth, previousEndMonth);
+
+    List<RegistrationDto> registrations = listBusiness.stream()
+            .map(this::toRegistrationDto)
+            .toList();
+
+    double totalSales = listTerminal.stream()
+            .map(Terminal::getLastPaymentValue)
+            .filter(Objects::nonNull)
+            .mapToDouble(Double::doubleValue)
+            .sum();
+
+    List<ActivationDto> activations = listTerminal.stream()
+            .map(this::toActivationDto)
+            .toList();
+
+    Instant inactiveLimit = Instant.now().minus(30, ChronoUnit.DAYS);
+
+    long activeTerminals = this.serviceDBTerminal.countCurrentlyActiveTerminals(inactiveLimit);
+    long inactiveTerminals = this.serviceDBTerminal.countInactiveTerminals(inactiveLimit);
+    long deactivatedTerminals = this.serviceDBTerminal.countDeactivatedTerminals();
+    long totalTerminals = this.serviceDBTerminal.countAllTerminals();
+
+    long totalRegistrations = registrations.size();
+    long totalActivations = activations.size();
+    long lastMonthRegistrations = lastMonthlistBusiness.size();
+    long lastMonthActivations = lastMonthlistTerminal.size();
+
+    StatusDistributionDto statusDistribution = new StatusDistributionDto(
+            activeTerminals,
+            inactiveTerminals,
+            deactivatedTerminals,
+            totalRegistrations,
+            totalTerminals
+    );
+
+    StatusDistributionPercentageDto statusDistributionPercentage = buildStatusDistributionPercentage(statusDistribution);
+
+    ActivationDashboardResponseDto response = new ActivationDashboardResponseDto(
+            totalRegistrations,
+            totalActivations,
+            lastMonthRegistrations,
+            lastMonthActivations,
+            totalSales,
+            calculateVariationPercentage(totalActivations, lastMonthActivations),
+            calculateVariationPercentage(totalRegistrations, lastMonthRegistrations),
+            activeTerminals,
+            inactiveTerminals,
+            deactivatedTerminals,
+            totalTerminals,
+            registrations,
+            activations,
+            buildDailyTrend(listBusiness, listTerminal),
+            statusDistribution,
+            statusDistributionPercentage
+    );
+
+    return new ResponseEntity<>(response, HttpStatus.OK);
+}
+    
     @Override
     public ResponseEntity<?> getMonthActivations() {
         // TODO: FALTA IMPLEMENTAR
@@ -1045,5 +1061,179 @@ public class BusinessService implements IBusinessService {
         EntidadNoExisteException objExeption = new EntidadNoExisteException("El Terminal con terminalId "+terminalId+" no existe en la Base de datos");
                 throw objExeption;
     }
-    
+    // ── NEW: Registration DTO mapper ──────────────────
+// Purpose : Converts Business entity to dashboard registration DTO
+// Depends on : Business fields businessId, registerDate, name, address, businessPhoneNumber, user
+// Does NOT modify : Business entity or repository contracts
+private RegistrationDto toRegistrationDto(Business business) {
+    return new RegistrationDto(
+            business.getBusinessId(),
+            business.getRegisterDate(),
+            business.getName(),
+            business.getAddress() != null ? business.getAddress().getCity() : null,
+            business.getBusinessPhoneNumber(),
+            "NUEVO REGISTRO",
+            business.isEnable() ? "ACTIVO" : "DESACTIVADO",
+            business.getMerchantId()
+    );
+}
+
+// ── NEW: Activation DTO mapper ──────────────────
+// Purpose : Converts Terminal entity to dashboard activation DTO
+// Depends on : Terminal fields terminalId, serial, name, business, service, registerDate, lastPayment, enable, isPrincipal
+// Does NOT modify : Terminal entity or repository contracts
+private ActivationDto toActivationDto(Terminal terminal) {
+    Instant activationDate = resolveActivationDate(terminal);
+
+    return new ActivationDto(
+            terminal.getTerminalId(),
+            terminal.getSerial(),
+            activationDate,
+            terminal.getBusiness() != null ? terminal.getBusiness().getName() : null,
+            terminal.getName(),
+            buildActivationType(terminal),
+            buildTerminalStatus(terminal),
+            terminal.getService() != null ? terminal.getService().getServiceValue() : null,
+            terminal.getBusiness() != null && terminal.getBusiness().getUser() != null
+                    ? terminal.getBusiness().getUser().getName()
+                    : null
+    );
+}
+
+// ── NEW: Activation date resolver ──────────────────
+// Purpose : Selects payment date first and registration date as fallback
+// Depends on : Terminal.lastPayment, Terminal.registerDate
+// Does NOT modify : Terminal fields
+private Instant resolveActivationDate(Terminal terminal) {
+    if (terminal.getLastPayment() != null) {
+        return terminal.getLastPayment();
+    }
+
+    return terminal.getRegisterDate();
+}
+
+// ── NEW: Activation type builder ──────────────────
+// Purpose : Builds activation or renewal label for terminal
+// Depends on : Terminal.registerDate, Terminal.lastPayment, Terminal.isPrincipal
+// Does NOT modify : Terminal fields
+private String buildActivationType(Terminal terminal) {
+    boolean principal = terminal.isPrincipal();
+
+    if (terminal.getRegisterDate() == null || terminal.getLastPayment() == null) {
+        return principal ? "ACTIVACIÓN TERMINAL PRINCIPAL" : "ACTIVACIÓN TERMINAL ADICIONAL";
+    }
+
+    boolean sameMonth = YearMonth.from(terminal.getRegisterDate().atZone(ZoneOffset.UTC))
+            .equals(YearMonth.from(terminal.getLastPayment().atZone(ZoneOffset.UTC)));
+
+    if (sameMonth) {
+        return principal ? "ACTIVACIÓN TERMINAL PRINCIPAL" : "ACTIVACIÓN TERMINAL ADICIONAL";
+    }
+
+    return principal ? "RENOVACIÓN TERMINAL PRINCIPAL" : "RENOVACIÓN TERMINAL ADICIONAL";
+}
+
+// ── NEW: Terminal status builder ──────────────────
+// Purpose : Classifies terminal as active, inactive or deactivated
+// Depends on : Terminal.enable, Terminal.lastTransmision
+// Does NOT modify : Terminal fields
+private String buildTerminalStatus(Terminal terminal) {
+    if (!terminal.isEnable()) {
+        return "DESACTIVADA";
+    }
+
+    Instant inactiveLimit = Instant.now().minus(30, ChronoUnit.DAYS);
+
+    if (terminal.getLastTransmision() == null || !terminal.getLastTransmision().isAfter(inactiveLimit)) {
+        return "INACTIVA";
+    }
+
+    return "ACTIVA";
+}
+
+// ── NEW: Daily trend builder ──────────────────
+// Purpose : Groups registrations and activations by day
+// Depends on : Business.registerDate, Terminal.lastPayment, Terminal.registerDate
+// Does NOT modify : Business or Terminal entities
+private List<DailyTrendDto> buildDailyTrend(List<Business> businesses, List<Terminal> terminals) {
+    Map<LocalDate, Long> registrationsByDate = businesses.stream()
+            .filter(business -> business.getRegisterDate() != null)
+            .collect(Collectors.groupingBy(
+                    business -> toLocalDate(business.getRegisterDate()),
+                    TreeMap::new,
+                    Collectors.counting()
+            ));
+
+    Map<LocalDate, Long> activationsByDate = terminals.stream()
+            .map(this::resolveActivationDate)
+            .filter(Objects::nonNull)
+            .collect(Collectors.groupingBy(
+                    this::toLocalDate,
+                    TreeMap::new,
+                    Collectors.counting()
+            ));
+
+    Set<LocalDate> dates = new TreeSet<>();
+    dates.addAll(registrationsByDate.keySet());
+    dates.addAll(activationsByDate.keySet());
+
+    return dates.stream()
+            .map(date -> new DailyTrendDto(
+                    date,
+                    activationsByDate.getOrDefault(date, 0L),
+                    registrationsByDate.getOrDefault(date, 0L)
+            ))
+            .toList();
+}
+
+// ── NEW: Local date converter ──────────────────
+// Purpose : Converts Instant to LocalDate using system timezone
+// Depends on : system default timezone
+// Does NOT modify : input date
+private LocalDate toLocalDate(Instant date) {
+    return date.atZone(ZoneId.systemDefault()).toLocalDate();
+}
+
+// ── NEW: Variation percentage calculator ──────────────────
+// Purpose : Calculates percentage variation against previous period
+// Depends on : current and previous totals
+// Does NOT modify : any state
+private double calculateVariationPercentage(long currentValue, long previousValue) {
+    if (previousValue == 0) {
+        return currentValue == 0 ? 0.0 : 100.0;
+    }
+
+    return ((double) (currentValue - previousValue) / previousValue) * 100;
+}
+
+// ── NEW: Status percentage builder ──────────────────
+// Purpose : Calculates percentage distribution for dashboard status counters
+// Depends on : StatusDistributionDto values
+// Does NOT modify : any state
+private StatusDistributionPercentageDto buildStatusDistributionPercentage(StatusDistributionDto distribution) {
+    long total = distribution.total();
+
+    if (total == 0) {
+        return new StatusDistributionPercentageDto(0.0, 0.0, 0.0, 0.0);
+    }
+
+    return new StatusDistributionPercentageDto(
+            calculatePercentage(distribution.active(), total),
+            calculatePercentage(distribution.inactive30Days(), total),
+            calculatePercentage(distribution.deactivated(), total),
+            calculatePercentage(distribution.registrations(), total)
+    );
+}
+
+// ── NEW: Percentage calculator ──────────────────
+// Purpose : Calculates percentage from part and total values
+// Depends on : numeric arguments only
+// Does NOT modify : any state
+private double calculatePercentage(long value, long total) {
+    if (total == 0) {
+        return 0.0;
+    }
+
+    return ((double) value / total) * 100;
+}
 }

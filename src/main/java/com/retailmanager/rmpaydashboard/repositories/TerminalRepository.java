@@ -63,4 +63,28 @@ public interface TerminalRepository extends CrudRepository<Terminal, String> {
      List<Terminal> findTerminalsForPayment(Instant targetDate, Long businessId);
      @Query("Select t from Terminal t where t.automaticPayments=True  and t.expirationDate>:targetDate and t.business.businessId = :businessId")
      List<Terminal> terminalsThatAreNotPaid(Instant targetDate, Long businessId);
+
+
+     @Query("SELECT COUNT(t) FROM Terminal t")
+long countAllTerminals();
+
+@Query("SELECT COUNT(t) FROM Terminal t WHERE t.enable = false")
+long countDeactivatedTerminals();
+
+@Query("""
+       SELECT COUNT(t)
+       FROM Terminal t
+       WHERE t.enable = true
+       AND t.lastTransmision IS NOT NULL
+       AND t.lastTransmision > :inactiveLimit
+       """)
+long countCurrentlyActiveTerminals(Instant inactiveLimit);
+
+@Query("""
+       SELECT COUNT(t)
+       FROM Terminal t
+       WHERE t.enable = true
+       AND (t.lastTransmision IS NULL OR t.lastTransmision <= :inactiveLimit)
+       """)
+long countInactiveTerminals(Instant inactiveLimit);
 }
