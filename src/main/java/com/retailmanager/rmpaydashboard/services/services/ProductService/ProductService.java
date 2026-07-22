@@ -11,8 +11,10 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
@@ -34,6 +36,7 @@ import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadY
 import com.retailmanager.rmpaydashboard.models.Business;
 import com.retailmanager.rmpaydashboard.models.Category;
 import com.retailmanager.rmpaydashboard.models.InventoryReceipt;
+import com.retailmanager.rmpaydashboard.models.ModifierGroup;
 import com.retailmanager.rmpaydashboard.models.Product;
 import com.retailmanager.rmpaydashboard.models.UserBusiness_Category;
 import com.retailmanager.rmpaydashboard.models.UserBusiness_Product;
@@ -41,6 +44,7 @@ import com.retailmanager.rmpaydashboard.models.UsersBusiness;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.CategoryRepository;
 import com.retailmanager.rmpaydashboard.repositories.InventoryReceiptRepository;
+import com.retailmanager.rmpaydashboard.repositories.ModifierGroupRepository;
 import com.retailmanager.rmpaydashboard.repositories.ProductRepository;
 import com.retailmanager.rmpaydashboard.repositories.UserBusiness_CategoryRepository;
 import com.retailmanager.rmpaydashboard.repositories.UserBusiness_ProductRepository;
@@ -66,6 +70,8 @@ public class ProductService implements IProductService {
     private UserBusiness_ProductRepository ubpServices;
     @Autowired
     private UserBusiness_CategoryRepository ubcServices;
+    @Autowired
+    private ModifierGroupRepository modifierGroupRepository;
 
     @Autowired 
     private InventoryReceiptRepository serviceDBInventoryReceipt;
@@ -116,6 +122,7 @@ public class ProductService implements IProductService {
             }
             Product objProduct = this.mapperBase.map(prmProduct, Product.class);
             objProduct.setCategory(optionalCategory.get());
+            setModifierGroups(objProduct, prmProduct.getModifierGroupIds(), optionalCategory.get().getBusiness().getBusinessId());
             objProduct.setCreatedAt(Instant.now());
             objProduct.setUpdatedAt(Instant.now());
             if(objProduct!=null){
@@ -130,8 +137,7 @@ public class ProductService implements IProductService {
             }
             
             if (objProduct != null) {
-                ProductDTO objProductRta = this.mapperBase.map(objProduct, ProductDTO.class);
-                objProductRta.setIdCategory(categoryId);
+                ProductDTO objProductRta = ProductDTO.tOProduct(objProduct);
                 rta = new ResponseEntity<ProductDTO>(objProductRta, HttpStatus.CREATED);
             }
         }
@@ -188,7 +194,7 @@ public class ProductService implements IProductService {
         objProduct.setMaximumLevel(prmProduct.getMaximumLevel());
         objProduct.setName(prmProduct.getName());
         objProduct.setUpdatedAt(Instant.now());
-        Long categoryId=prmProduct.getIdCategory();
+        Long categoryId = prmProduct.getIdCategory();
         if(categoryId!=null){
             Optional<Category> optionalCategory = this.serviceDBCategory.findById(categoryId);
             if(!optionalCategory.isPresent()){
@@ -200,14 +206,16 @@ public class ProductService implements IProductService {
                 objProduct.setCategory(optionalCategory.get());
             }
         }
+        if (prmProduct.getModifierGroupIds() != null) {
+            setModifierGroups(objProduct, prmProduct.getModifierGroupIds(), objProduct.getCategory().getBusiness().getBusinessId());
+        }
         objProduct = this.serviceDBProducts.save(objProduct);
         ResponseEntity<?> rta = null;
         if (objProduct != null) {
             for(UsersBusiness usersBusiness:objProduct.getCategory().getBusiness().getUsersBusiness()){
                 ubpServices.updateDownload(productId,usersBusiness.getUserBusinessId(),false);
             }
-            ProductDTO objProductRta = this.mapperBase.map(objProduct, ProductDTO.class);
-            objProductRta.setIdCategory(categoryId);
+            ProductDTO objProductRta = ProductDTO.tOProduct(objProduct);
             rta = new ResponseEntity<ProductDTO>(objProductRta, HttpStatus.OK);
         } 
         return rta;
@@ -259,8 +267,7 @@ public class ProductService implements IProductService {
             }
         }
         if(optionalProduct!=null){
-            ProductDTO objProductDTO = this.mapperBase.map(optionalProduct.get(), ProductDTO.class);
-            objProductDTO.setIdCategory(optionalProduct.get().getCategory().getCategoryId());
+            ProductDTO objProductDTO = ProductDTO.tOProduct(optionalProduct.get());
             rta = new ResponseEntity<ProductDTO>(objProductDTO, HttpStatus.OK);
         }
         return rta;
@@ -681,5 +688,29 @@ public class ProductService implements IProductService {
         }
         
         return new ResponseEntity<>(objInventoryReceiptsDTO,HttpStatus.OK);
+    }
+
+    private void setModifierGroups(Product product, List<String> modifierGroupIds, Long businessId) {
+        Set<ModifierGroup> modifierGroups = new HashSet<>();
+        if (modifierGroupIds != null) {
+            for (String modifierGroupId : modifierGroupIds) {
+                if (modifierGroupId == null || modifierGroupId.isBlank()) {
+                    continue;
+                }
+
+                ModifierGroup modifierGroup = modifierGroupRepository.findById(modifierGroupId)
+                        .orElseThrow(() -> new EntidadNoExisteException("El grupo de modificadores con id "
+                                + modifierGroupId + " no existe en la base de datos"));
+
+                if (!modifierGroup.getBusiness().getBusinessId().equals(businessId)) {
+                    throw new EntidadNoExisteException("El grupo de modificadores con id "
+                            + modifierGroupId + " no pertenece al negocio del producto");
+                }
+
+                modifierGroups.add(modifierGroup);
+            }
+        }
+
+        product.setModifierGroups(modifierGroups);
     }
 }

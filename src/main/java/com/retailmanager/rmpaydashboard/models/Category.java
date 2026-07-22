@@ -16,6 +16,8 @@ import java.time.Instant;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 
 @Entity
 @Getter @Setter
@@ -37,6 +39,21 @@ public class Category {
     private Business business;
     private String color;
     private String position;
+    private String icon = "";
     private Instant createdAt;
     private Instant updatedAt;
+
+    public String getIcon() {
+        return icon != null ? icon : "";
+    }
+
+    public void setIcon(String icon) {
+        this.icon = icon != null ? icon : "";
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void normalizeIcon() {
+        setIcon(icon);
+    }
 }

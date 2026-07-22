@@ -7,6 +7,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -15,6 +17,8 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
@@ -56,6 +60,13 @@ public class Product {
     @ManyToOne(cascade=CascadeType.PERSIST,optional = true)
     @JoinColumn( name="categoryId",nullable = false)
     private Category category;
+    @ManyToMany
+    @JoinTable(
+        name = "Product_ModifierGroup",
+        joinColumns = @JoinColumn(name = "productId"),
+        inverseJoinColumns = @JoinColumn(name = "modifierGroupId")
+    )
+    private Set<ModifierGroup> modifierGroups = new HashSet<>();
     private Instant createdAt;
     private Instant updatedAt;
 }
