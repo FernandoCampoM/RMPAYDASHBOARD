@@ -43,6 +43,8 @@ import com.retailmanager.rmpaydashboard.models.Terminal;
 import com.retailmanager.rmpaydashboard.models.User;
 import com.retailmanager.rmpaydashboard.models.UserPermission;
 import com.retailmanager.rmpaydashboard.models.UsersBusiness;
+import com.retailmanager.rmpaydashboard.models.enums.ActivityEntityType;
+import com.retailmanager.rmpaydashboard.models.enums.ActivityType;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.InvoiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.PermisionRepository;
@@ -50,6 +52,7 @@ import com.retailmanager.rmpaydashboard.repositories.ServiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
 import com.retailmanager.rmpaydashboard.repositories.UserRepository;
 import com.retailmanager.rmpaydashboard.repositories.UsersAppRepository;
+import com.retailmanager.rmpaydashboard.services.DTO.ActivityLogCreateDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.BusinessDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.CategoryDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.RegsitryBusinessDTO;
@@ -61,6 +64,7 @@ import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailyTrendDto;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.RegistrationDto;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.StatusDistributionDto;
 import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.StatusDistributionPercentageDto;
+import com.retailmanager.rmpaydashboard.services.services.ActivityLogService.IActivityLogService;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.EmailBodyData;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
 import com.retailmanager.rmpaydashboard.services.services.FileServices.IFileService;
@@ -97,6 +101,9 @@ public class BusinessService implements IBusinessService {
     private InvoiceRepository serviceDBInvoice;
     @Autowired
     private IFileService fileService;
+
+    @Autowired
+    private IActivityLogService activityLogService;
     Gson gson = new Gson();
     DecimalFormat formato = new DecimalFormat("#.##");
     /**
@@ -181,6 +188,26 @@ public class BusinessService implements IBusinessService {
             objUserBusiness.setRoleId(EmployeeRole.ADMIN.getId());
             objUserBusiness=this.serviceDBEmployee.save(objUserBusiness);
 
+         }
+         try{
+            ActivityLogCreateDTO activity = new ActivityLogCreateDTO();
+
+            activity.setActivityType(ActivityType.CLIENT_REGISTERED);
+            activity.setTitle("Nuevo cliente registrado");
+            activity.setDetail(
+                objBusiness.getName() + " se registró en el sistema"
+            );
+            activity.setEntityType(ActivityEntityType.BUSINESS);
+            activity.setEntityId(
+                String.valueOf(objBusiness.getBusinessId())
+            );
+            activity.setBusinessId(objBusiness.getBusinessId());
+            activity.setUserId(objBusiness.getUser().getUserID());
+            activity.setUserName(objBusiness.getUser().getName());
+
+            activityLogService.createActivity(activity);
+         }catch(Exception e){
+            System.out.println("Error al crear el log de actividad: "+e.getMessage());
          }
         BusinessDTO businessDTO=this.mapper.map(objBusiness, BusinessDTO.class);
         if(businessDTO!=null){
@@ -706,6 +733,10 @@ public class BusinessService implements IBusinessService {
                 EntidadNoExisteException objExeption = new EntidadNoExisteException("El business con businessId "+prmBusiness.getBusinessId()+" ya existe en la Base de datos");
                 throw objExeption;
             }
+            Map<String, Object> changes =
+        detectBusinessChanges(
+                objBusiness,
+                prmBusiness);
             objBusiness=exist.get();
             if(objBusiness.getMerchantId().compareTo(prmBusiness.getMerchantId())!=0){
                 Optional<Business> exist2 = this.serviceDBBusiness.findOneByMerchantId(prmBusiness.getMerchantId());
@@ -755,6 +786,13 @@ public class BusinessService implements IBusinessService {
              }
              if(objBusiness!=null){
                 objBusiness=this.serviceDBBusiness.save(objBusiness);
+                if (!changes.isEmpty()) {
+                registerClientUpdatedActivity(
+                    objBusiness,"Actualización de negocio",
+                    changes
+                );
+            
+}
              }
              objBusiness.getUser().setBusiness(null);
             BusinessDTO businessDTO=this.mapper.map(objBusiness, BusinessDTO.class);
@@ -766,7 +804,161 @@ public class BusinessService implements IBusinessService {
         }
         return rta;
     }
+private Map<String, Object> detectBusinessChanges(
+        Business currentBusiness,
+        BusinessDTO newBusinessData) {
 
+    Map<String, Object> changes = new HashMap<>();
+
+    addChangeIfDifferent(
+            changes,
+            "merchantId",
+            currentBusiness.getMerchantId(),
+            newBusinessData.getMerchantId());
+
+    addChangeIfDifferent(
+            changes,
+            "name",
+            currentBusiness.getName(),
+            newBusinessData.getName());
+
+    addChangeIfDifferent(
+            changes,
+            "additionalTerminals",
+            currentBusiness.getAdditionalTerminals(),
+            newBusinessData.getAdditionalTerminals());
+
+    addChangeIfDifferent(
+            changes,
+            "businessPhoneNumber",
+            currentBusiness.getBusinessPhoneNumber(),
+            newBusinessData.getBusinessPhoneNumber());
+
+    addChangeIfDifferent(
+            changes,
+            "comment",
+            currentBusiness.getComment(),
+            newBusinessData.getComment());
+
+    addChangeIfDifferent(
+            changes,
+            "percentageProfit",
+            currentBusiness.getPercentageProfit(),
+            newBusinessData.getPercentageProfit());
+
+    addChangeIfDifferent(
+            changes,
+            "discount",
+            currentBusiness.getDiscount(),
+            newBusinessData.getDiscount());
+
+    addChangeIfDifferent(
+            changes,
+            "serviceId",
+            currentBusiness.getServiceId(),
+            newBusinessData.getServiceId());
+
+    detectAddressChanges(
+            changes,
+            currentBusiness,
+            newBusinessData);
+
+    
+
+    return changes;
+}
+private void detectAddressChanges(
+        Map<String, Object> changes,
+        Business currentBusiness,
+        BusinessDTO newBusinessData) {
+
+    Map<String, Object> addressChanges = new HashMap<>();
+
+    if (currentBusiness.getAddress() == null
+            && newBusinessData.getAddress() == null) {
+        return;
+    }
+
+    if (currentBusiness.getAddress() == null) {
+        addressChanges.put(
+                "address",
+                createChange(
+                        null,
+                        newBusinessData.getAddress()));
+
+        changes.put("address", addressChanges);
+        return;
+    }
+
+    if (newBusinessData.getAddress() == null) {
+        addressChanges.put(
+                "address",
+                createChange(
+                        currentBusiness.getAddress(),
+                        null));
+
+        changes.put("address", addressChanges);
+        return;
+    }
+
+    addChangeIfDifferent(
+            addressChanges,
+            "address1",
+            currentBusiness.getAddress().getAddress1(),
+            newBusinessData.getAddress().getAddress1());
+
+    addChangeIfDifferent(
+            addressChanges,
+            "address2",
+            currentBusiness.getAddress().getAddress2(),
+            newBusinessData.getAddress().getAddress2());
+
+    addChangeIfDifferent(
+            addressChanges,
+            "city",
+            currentBusiness.getAddress().getCity(),
+            newBusinessData.getAddress().getCity());
+
+    addChangeIfDifferent(
+            addressChanges,
+            "country",
+            currentBusiness.getAddress().getCountry(),
+            newBusinessData.getAddress().getCountry());
+
+    addChangeIfDifferent(
+            addressChanges,
+            "zipcode",
+            currentBusiness.getAddress().getZipcode(),
+            newBusinessData.getAddress().getZipcode());
+
+    if (!addressChanges.isEmpty()) {
+        changes.put("address", addressChanges);
+    }
+}
+
+
+private void addChangeIfDifferent(
+        Map<String, Object> changes,
+        String fieldName,
+        Object oldValue,
+        Object newValue) {
+
+    if (!Objects.equals(oldValue, newValue)) {
+        changes.put(
+                fieldName,
+                createChange(oldValue, newValue));
+    }
+}
+private Map<String, Object> createChange(
+        Object oldValue,
+        Object newValue) {
+
+    Map<String, Object> change = new HashMap<>();
+    change.put("oldValue", oldValue);
+    change.put("newValue", newValue);
+
+    return change;
+}
     /**
      * Deletes a business record by its ID.
      *
@@ -884,6 +1076,7 @@ public class BusinessService implements IBusinessService {
             Optional<Business> optional= this.serviceDBBusiness.findById(businessId);
             if(optional.isPresent()){
                 this.serviceDBBusiness.updateEnable(businessId, enable);
+                
                 return new ResponseEntity<Boolean>(true,HttpStatus.OK);
             }
         }
@@ -1235,5 +1428,56 @@ private double calculatePercentage(long value, long total) {
     }
 
     return ((double) value / total) * 100;
+}
+private void registerClientUpdatedActivity(
+        Business business,
+        String updatedBy,
+        Map<String, Object> changedFields) {
+
+    Map<String, Object> additionalData = new HashMap<>();
+    additionalData.put("updatedBy", updatedBy);
+    additionalData.put("changedFields", changedFields);
+
+    ActivityLogCreateDTO activity = buildActivity(
+            ActivityType.CLIENT_UPDATED,
+            "Información actualizada",
+            "Los datos del cliente "
+                    + business.getName()
+                    + " fueron actualizados.",
+            ActivityEntityType.BUSINESS,
+            String.valueOf(business.getBusinessId()),
+            business.getBusinessId(),
+            business.getUser(),
+            additionalData);
+
+    activityLogService.createActivity(activity);
+}
+private ActivityLogCreateDTO buildActivity(
+        ActivityType activityType,
+        String title,
+        String detail,
+        ActivityEntityType entityType,
+        String entityId,
+        Long businessId,
+        User user,
+        Map<String, Object> additionalData) {
+
+    ActivityLogCreateDTO activity = new ActivityLogCreateDTO();
+
+    activity.setActivityType(activityType);
+    activity.setTitle(title);
+    activity.setDetail(detail);
+    activity.setEntityType(entityType);
+    activity.setEntityId(entityId);
+    activity.setBusinessId(businessId);
+
+    if (user != null) {
+        activity.setUserId(user.getUserID());
+        activity.setUserName(user.getName());
+    }
+
+    activity.setAdditionalData(additionalData);
+
+    return activity;
 }
 }

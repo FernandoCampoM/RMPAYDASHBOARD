@@ -87,4 +87,76 @@ long countCurrentlyActiveTerminals(Instant inactiveLimit);
        AND (t.lastTransmision IS NULL OR t.lastTransmision <= :inactiveLimit)
        """)
 long countInactiveTerminals(Instant inactiveLimit);
+@Query("""
+       SELECT COUNT(t)
+       FROM Terminal t
+       WHERE t.registerDate BETWEEN :startDate AND :endDate
+       """)
+long countNewTerminalsBetween(Instant startDate, Instant endDate);
+
+@Query("""
+       SELECT COUNT(DISTINCT t.business.user.userID)
+       FROM Terminal t
+       WHERE t.enable = false
+       AND t.expirationDate IS NOT NULL
+       AND t.expirationDate BETWEEN :startDate AND :endDate
+       """)
+long countDeactivatedClientsBetween(Instant startDate, Instant endDate);
+@Query("""
+       SELECT COUNT(DISTINCT t.business.businessId)
+       FROM Terminal t
+       WHERE t.isPrincipal = true
+       AND t.enable = false
+       AND t.expirationDate IS NOT NULL
+       AND t.expirationDate < :now
+       """)
+long countBusinessesWithExpiredAndDeactivatedPrincipalTerminal(Instant now);
+@Query("""
+       SELECT COUNT(DISTINCT t.business.businessId)
+       FROM Terminal t
+       WHERE t.isPrincipal = true
+       AND t.enable = true
+       AND t.expirationDate IS NOT NULL
+       AND t.expirationDate >= :now
+       """)
+long countBusinessesWithActivePrincipalTerminal(Instant now);
+@Query("""
+       SELECT COUNT(t)
+       FROM Terminal t
+       WHERE t.expirationDate IS NOT NULL
+       AND t.expirationDate >= :asOf
+       """)
+long countActiveTerminalsAt(Instant asOf);
+@Query("""
+       SELECT COUNT(t)
+       FROM Terminal t
+       WHERE t.expirationDate IS NOT NULL
+       AND t.expirationDate >= :asOf
+       AND (
+           t.lastTransmision IS NULL
+           OR t.lastTransmision <= :inactiveLimit
+       )
+       """)
+long countInactiveTerminalsAt(Instant asOf, Instant inactiveLimit);
+@Query("""
+       SELECT COUNT(t)
+       FROM Terminal t
+       WHERE 
+        t.expirationDate IS NOT NULL
+       AND t.expirationDate < :asOf
+       """)
+long countDeactivatedTerminalsAt(Instant asOf);
+@Query("""
+       SELECT COUNT(DISTINCT b.user.userID)
+       FROM Business b
+       WHERE NOT EXISTS (
+           SELECT 1
+           FROM Terminal t
+           WHERE t.business = b
+           AND t.enable = true
+           AND t.expirationDate IS NOT NULL
+           AND t.expirationDate >= :asOf
+       )
+       """)
+long countClientsWithoutActiveMembershipAt(Instant asOf);
 }
