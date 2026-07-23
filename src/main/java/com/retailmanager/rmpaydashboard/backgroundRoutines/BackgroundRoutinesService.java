@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,11 +14,15 @@ import org.springframework.stereotype.Component;
 
 import com.retailmanager.rmpaydashboard.models.Business;
 import com.retailmanager.rmpaydashboard.models.Terminal;
+import com.retailmanager.rmpaydashboard.models.enums.ActivityEntityType;
+import com.retailmanager.rmpaydashboard.models.enums.ActivityType;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
+import com.retailmanager.rmpaydashboard.services.DTO.ActivityLogCreateDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.InvoiceDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalsDoPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.doPaymentDTO;
+import com.retailmanager.rmpaydashboard.services.services.ActivityLogService.IActivityLogService;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
 import com.retailmanager.rmpaydashboard.services.services.InvoiceServices.IInvoiceServices;
 
@@ -34,13 +39,57 @@ public class BackgroundRoutinesService {
 
     @Autowired
     IEmailService emailService;
+     @Autowired
+    private IActivityLogService activityLogService;
     @Modifying
     public void deactivateExpiredTerminals(){
         List<Terminal> terminals = terminalRepository.findByExpirationDateBefore(Instant.now());
         for (Terminal terminal : terminals) {
             terminalRepository.deactivateExpiredTerminals(terminal.getTerminalId());
+            registerTerminalDeactivatedActivity(terminal, "FALTA DE PAGO", "ACTIVATED");
         }
     }
+    private void registerTerminalDeactivatedActivity(
+        Terminal terminal,
+        String reason,
+        String previousStatus) {
+
+    ActivityLogCreateDTO activity = new ActivityLogCreateDTO();
+
+    activity.setActivityType(ActivityType.TERMINAL_DEACTIVATED);
+    activity.setTitle("Terminal desactivada");
+    activity.setDetail(
+            "Terminal " + terminal.getName()
+                    + " de "
+                    + terminal.getBusiness().getName()
+                    + " fue desactivada");
+
+    activity.setEntityType(ActivityEntityType.TERMINAL);
+    activity.setEntityId(terminal.getTerminalId());
+
+    activity.setBusinessId(
+            terminal.getBusiness().getBusinessId());
+
+    if (terminal.getBusiness().getUser() != null) {
+        activity.setUserId(
+                terminal.getBusiness().getUser().getUserID());
+
+        activity.setUserName(
+                terminal.getBusiness().getUser().getName());
+    }
+
+    Map<String, Object> additionalData = new HashMap<>();
+    additionalData.put("terminalId", terminal.getTerminalId());
+    additionalData.put("terminalName", terminal.getName());
+    additionalData.put("serial", terminal.getSerial());
+    additionalData.put("reason", reason);
+    additionalData.put("previousStatus", previousStatus);
+    additionalData.put("newStatus", "DEACTIVATED");
+
+    activity.setAdditionalData(additionalData);
+
+    activityLogService.createActivity(activity);
+}
     @Transactional
     public void priorNotificaionEmail(){
          HashMap<Long, Object> users = new HashMap<Long, Object>();

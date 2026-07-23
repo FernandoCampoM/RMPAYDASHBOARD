@@ -1,38 +1,34 @@
 package com.retailmanager.rmpaydashboard.services.services.ReportsServices;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadNoExisteException;
+import com.retailmanager.rmpaydashboard.models.ActivityLog;
 import com.retailmanager.rmpaydashboard.models.Business;
 import com.retailmanager.rmpaydashboard.models.EntryExit;
 import com.retailmanager.rmpaydashboard.models.Product;
 import com.retailmanager.rmpaydashboard.models.Sale;
 import com.retailmanager.rmpaydashboard.models.Transactions;
 import com.retailmanager.rmpaydashboard.models.Interface.LaborMetricsProjection;
+import com.retailmanager.rmpaydashboard.models.enums.ActivityType;
 import com.retailmanager.rmpaydashboard.models.enums.KPIStatus;
+import com.retailmanager.rmpaydashboard.repositories.ActivityLogRepository;
 import com.retailmanager.rmpaydashboard.repositories.BusinessConfigurationRepository;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.DashboardKpiProjection;
 import com.retailmanager.rmpaydashboard.repositories.EntryExitRepository;
+import com.retailmanager.rmpaydashboard.repositories.InvoiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.ProductRepository;
 import com.retailmanager.rmpaydashboard.repositories.SaleRepository;
+import com.retailmanager.rmpaydashboard.repositories.TerminalPayAtTableRepository;
+import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
 import com.retailmanager.rmpaydashboard.repositories.TransactionsRepository;
 import com.retailmanager.rmpaydashboard.repositories.UsersAppRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.EntryExitDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.HourlySalesDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.*;
 import com.retailmanager.rmpaydashboard.services.DTO.ProductDTO;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BestSellingCategoryProjection;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BestSellingItemByCategoryProjection;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.BestSellingItemProjection;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.CategoryNetSalesProjection;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySalesDTO;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySummaryDTO;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DailySummaryProjection;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.DashboardKpiDTO;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.EarningsReportDTO;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.MonthlySummaryProjection;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.PaymentNetProjection;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.TaxesProjection;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.TipsReportDTO;
-import com.retailmanager.rmpaydashboard.services.DTO.ReportsDTO.UserTipsReportProjection;
+import com.retailmanager.rmpaydashboard.services.services.ActivityLogService.IActivityLogService;
 import com.retailmanager.rmpaydashboard.services.DTO.TransactionDTO;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
@@ -70,6 +66,8 @@ public class ReportService implements IReportService {
     @Qualifier("mapperbase")
     private ModelMapper mapper;
     @Autowired
+    private  ObjectMapper objectMapper;
+    @Autowired
     private BusinessRepository serviceDBBusiness;
     @Autowired
     private BusinessConfigurationRepository serviceDBBusinessConfiguration;
@@ -86,6 +84,19 @@ public class ReportService implements IReportService {
     @Autowired
     private UsersAppRepository usersAppRepository;
 
+    @Autowired
+private TerminalRepository serviceDBTerminal;
+
+@Autowired
+private InvoiceRepository serviceDBInvoice;
+
+@Autowired
+private ActivityLogRepository activityLogRepository;
+
+@Autowired
+private IActivityLogService activityLogService;
+@Autowired
+private TerminalPayAtTableRepository terminalPayAtTableRepository;
     ReportService(AccessDeniedHandler accessDeniedHandler) {
         this.accessDeniedHandler = accessDeniedHandler;
     }
@@ -1074,4 +1085,324 @@ private KPIStatus calculateAvgTicketStatus(Double avgTicketYoy) {
     // <= -2%
     return KPIStatus.RED;
 }
+
+@Override
+@Transactional(readOnly = true)
+public ResponseEntity<?> getAdminDashboard(Integer year, Integer month, Integer trendMonths) {
+    // ── NEW: Admin dashboard monthly report ──────────────────
+    // Purpose : Builds the monthly admin dashboard using DTOs and business rules
+    // Depends on : BusinessRepository, TerminalRepository, InvoiceRepository, ActivityLogRepository, ActivityLogService
+    // Does NOT modify : existing report methods, entities, repository contracts, synchronous behavior
+
+    int safeTrendMonths = trendMonths == null || trendMonths <= 0 ? 6 : trendMonths;
+
+    YearMonth currentMonth = YearMonth.of(year, month);
+    YearMonth previousMonth = currentMonth.minusMonths(1);
+
+    LocalDate todayDate = LocalDate.now();
+    LocalDate startDate = currentMonth.atDay(1);
+    LocalDate endDate = currentMonth.atEndOfMonth();
+    LocalDate previousStartDate = previousMonth.atDay(1);
+    LocalDate previousEndDate = previousMonth.atEndOfMonth();
+
+    ZoneId zone = ZoneId.systemDefault();
+    Instant nowInstant = todayDate.atStartOfDay(zone).toInstant();
+    Instant startInstant = startDate.atStartOfDay(zone).toInstant();
+    Instant endInstant = endDate.plusDays(1).atStartOfDay(zone).minusNanos(1).toInstant();
+    Instant previousStartInstant = previousStartDate.atStartOfDay(zone).toInstant();
+    Instant previousEndInstant = previousEndDate.plusDays(1).atStartOfDay(zone).minusNanos(1).toInstant();
+
+    Instant currentInactiveLimit = endInstant.minus(Duration.ofDays(15));
+    Instant previousInactiveLimit = previousEndInstant.minus(Duration.ofDays(15));
+
+    long activeClients = serviceDBBusiness.countClientsWithActiveMembershipAt(endInstant);
+    long previousActiveClients = serviceDBBusiness.countClientsWithActiveMembershipAt(previousEndInstant);
+
+    long negociosActivos = serviceDBTerminal.countBusinessesWithActivePrincipalTerminal(nowInstant);
+    //long previousInactiveClients = serviceDBBusiness.countInactiveClientsAt(previousEndInstant, previousInactiveLimit);
+
+    long inactiveBusiness = serviceDBTerminal.countBusinessesWithExpiredAndDeactivatedPrincipalTerminal( nowInstant);
+    long inactiveClients = serviceDBBusiness.countInactiveClientsAt(endInstant, currentInactiveLimit);
+    //long previousDeactivatedClients = serviceDBTerminal.countDeactivatedClientsBetween(previousStartInstant, previousEndInstant);
+
+    BigDecimal paymentsReceived = safeMoney(serviceDBInvoice.sumSuccessfulPaymentsBetween(startDate, endDate));
+    BigDecimal previousPaymentsReceived = safeMoney(serviceDBInvoice.sumSuccessfulPaymentsBetween(previousStartDate, previousEndDate));
+
+    long paymentsCount = serviceDBInvoice.countSuccessfulPaymentsBetween(startDate, endDate);
+    long previousPaymentsCount = serviceDBInvoice.countSuccessfulPaymentsBetween(previousStartDate, previousEndDate);
+
+    long newRegisteredClients = serviceDBBusiness.countRegisteredClientsBetween(startInstant, endInstant);
+    long previousNewRegisteredClients = serviceDBBusiness.countRegisteredClientsBetween(previousStartInstant, previousEndInstant);
+
+    long newTerminals = serviceDBTerminal.countNewTerminalsBetween(startInstant, endInstant);
+    long previousNewTerminals = serviceDBTerminal.countNewTerminalsBetween(previousStartInstant, previousEndInstant);
+
+    long newRMPayLiteClients = countRMPayLiteClients(startInstant, endInstant);
+    long previousNewRMPayLiteClients = countRMPayLiteClients(previousStartInstant, previousEndInstant);
+
+    DashboardSummaryDTO summary = new DashboardSummaryDTO(
+            metric(activeClients, -1),
+            metric(negociosActivos, -1),
+            metric(inactiveBusiness, -1),
+            metric(paymentsReceived, previousPaymentsReceived),
+            metric(paymentsCount, previousPaymentsCount),
+            metric(newRMPayLiteClients, previousNewRMPayLiteClients),
+            metric(newTerminals, previousNewTerminals),
+            metric(newRegisteredClients, previousNewRegisteredClients)
+    );
+
+    List<NewClientDTO> newClients = serviceDBBusiness
+            .findRegisteredBusinessesBetween(startInstant, endInstant)
+            .stream()
+            .map(this::toNewClientDTO)
+            .toList();
+
+    List<DeactivatedClientDTO> deactivatedClientList = activityLogRepository
+            .findByActivityTypeAndOccurredAtBetweenOrderByOccurredAtDesc(
+                    ActivityType.TERMINAL_DEACTIVATED,
+                    startInstant,
+                    endInstant
+            )
+            .stream()
+            .map(this::toDeactivatedClientDTO)
+            .toList();
+
+    List<PaymentMethodDTO> paymentMethods = serviceDBInvoice
+            .findPaymentMethodsBetween(startDate, endDate)
+            .stream()
+            .map(this::toPaymentMethodDTO)
+            .toList();
+
+    PaymentMethodsTotalDTO paymentMethodsTotal = new PaymentMethodsTotalDTO(
+            paymentMethods.stream().mapToLong(PaymentMethodDTO::transactionCount).sum(),
+            paymentMethods.stream()
+                    .map(PaymentMethodDTO::amount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+    );
+
+    List<MonthlyTrendDTO> monthlyTrend = buildMonthlyTrend(currentMonth, safeTrendMonths, zone);
+
+    
+    long activeTerminals = serviceDBTerminal.countActiveTerminalsAt(nowInstant);
+long inactiveTerminals = serviceDBTerminal.countInactiveTerminalsAt(nowInstant, nowInstant.minus(Duration.ofDays(15)));
+long deactivatedTerminals = serviceDBTerminal.countDeactivatedTerminalsAt(nowInstant);
+
+long distributionTotalTer = activeTerminals  + deactivatedTerminals;
+
+TerminalDistributionDTO terminalDistribution = new TerminalDistributionDTO(
+        activeTerminals,
+        inactiveTerminals,
+        deactivatedTerminals,
+        distributionTotalTer
+);
+
+    DashboardPeriodDTO period = new DashboardPeriodDTO(
+            year,
+            month,
+            buildMonthLabel(currentMonth),
+            startDate,
+            endDate,
+            buildMonthLabel(previousMonth),
+            previousStartDate,
+            previousEndDate
+    );
+
+    AdminDashboardResponseDTO response = new AdminDashboardResponseDTO(
+            Instant.now(),
+            zone.getId(),
+            "USD",
+            period,
+            summary,
+            newClients,
+            deactivatedClientList,
+            paymentMethods,
+            paymentMethodsTotal,
+            monthlyTrend,
+            terminalDistribution,
+            activityLogService.getRecentActivities(5)
+    );
+
+    return new ResponseEntity<>(response, HttpStatus.OK);
+}
+// ── NEW: Dashboard metric helper ──────────────────
+// Purpose : Builds metric values with variation percentage
+// Depends on : numeric values only
+// Does NOT modify : any state
+private DashboardMetricDTO metric(Number currentValue, Number previousValue) {
+    if(previousValue.intValue() ==-1){
+        return new DashboardMetricDTO(
+                currentValue,
+                previousValue,
+                BigDecimal.valueOf(-1)
+        );
+    }
+    return new DashboardMetricDTO(
+            currentValue,
+            previousValue,
+            variationPercentage(currentValue, previousValue)
+    );
+}
+
+private BigDecimal variationPercentage(Number currentValue, Number previousValue) {
+    BigDecimal current = toBigDecimal(currentValue);
+    BigDecimal previous = toBigDecimal(previousValue);
+
+    if (previous.compareTo(BigDecimal.ZERO) == 0) {
+        return current.compareTo(BigDecimal.ZERO) == 0
+                ? BigDecimal.ZERO
+                : BigDecimal.valueOf(100).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    return current.subtract(previous)
+            .divide(previous, 6, RoundingMode.HALF_UP)
+            .multiply(BigDecimal.valueOf(100))
+            .setScale(2, RoundingMode.HALF_UP);
+}
+
+private BigDecimal toBigDecimal(Number value) {
+    if (value == null) {
+        return BigDecimal.ZERO;
+    }
+
+    if (value instanceof BigDecimal bigDecimal) {
+        return bigDecimal;
+    }
+
+    return BigDecimal.valueOf(value.doubleValue());
+}
+
+private BigDecimal safeMoney(BigDecimal value) {
+    return value == null ? BigDecimal.ZERO : value;
+}
+
+private String buildMonthLabel(YearMonth month) {
+    return month.getMonth()
+            .getDisplayName(java.time.format.TextStyle.FULL, new Locale("es", "ES"))
+            + " "
+            + month.getYear();
+}
+
+private NewClientDTO toNewClientDTO(Business business) {
+    Long clientId = business.getUser() != null ? business.getUser().getUserID() : null;
+    String clientName = business.getUser() != null ? business.getUser().getName() : business.getName();
+
+    return new NewClientDTO(
+            clientId,
+            clientName,
+            business.getBusinessId(),
+            business.getName(),
+            business.getRegisterDate(),
+            business.getServiceId(),
+            business.getServiceId() != null ? String.valueOf(business.getServiceId()) : null,
+            business.getServiceId() != null ? "Servicio " + business.getServiceId() : null,
+            null,
+            null,
+            business.isEnable() ? "ACTIVE" : "DEACTIVATED"
+    );
+}
+
+private DeactivatedClientDTO toDeactivatedClientDTO(ActivityLog activityLog) {
+    Business business = null;
+
+    if (activityLog.getBusinessId() != null) {
+        business = serviceDBBusiness.findById(activityLog.getBusinessId()).orElse(null);
+    }
+
+    Long clientId = business != null && business.getUser() != null
+            ? business.getUser().getUserID()
+            : activityLog.getUserId();
+
+    String clientName = business != null && business.getUser() != null
+            ? business.getUser().getName()
+            : activityLog.getUserName();
+    String reason = "Desactivación registrada en actividad";
+
+    if (activityLog.getAdditionalData() != null && !activityLog.getAdditionalData().isBlank()) {
+        try {
+            JsonNode additionalData = objectMapper.readTree(activityLog.getAdditionalData());
+            reason = additionalData.path("reason").asText(reason);
+        } catch (Exception ignored) {
+            reason = "Desactivación registrada en actividad";
+        }
+    }
+    return new DeactivatedClientDTO(
+            clientId,
+            clientName,
+            activityLog.getBusinessId(),
+            business != null ? business.getName() : null,
+            activityLog.getOccurredAt(),
+            "OTHER",
+            reason,
+            business != null ? business.getLastPayment() : null,
+            null,
+            true
+    );
+}
+
+private PaymentMethodDTO toPaymentMethodDTO(PaymentMethodDashboardProjection projection) {
+    return new PaymentMethodDTO(
+            projection.getCode(),
+            paymentMethodName(projection.getCode()),
+            projection.getTransactionCount(),
+            safeMoney(projection.getAmount())
+    );
+}
+
+private String paymentMethodName(String code) {
+    if (code == null) {
+        return "Otro";
+    }
+
+    return switch (code) {
+        case "CREDIT-CARD" -> "Tarjeta de Crédito";
+        case "BANK-ACCOUNT" -> "ACH / Transferencia";
+        case "ATHMOVIL" -> "ATH Móvil";
+        case "PAID-WITH-DISCOUNT" -> "Descuento";
+        default -> code;
+    };
+}
+
+private List<MonthlyTrendDTO> buildMonthlyTrend(YearMonth selectedMonth, int trendMonths, ZoneId zone) {
+    List<MonthlyTrendDTO> trend = new ArrayList<>();
+
+    YearMonth firstMonth = selectedMonth.minusMonths(trendMonths - 1L);
+
+    for (int index = 0; index < trendMonths; index++) {
+        YearMonth month = firstMonth.plusMonths(index);
+
+        LocalDate start = month.atDay(1);
+        LocalDate end = month.atEndOfMonth();
+
+        Instant startInstant = start.atStartOfDay(zone).toInstant();
+        Instant endInstant = end.plusDays(1).atStartOfDay(zone).minusNanos(1).toInstant();
+
+        trend.add(new MonthlyTrendDTO(
+                month.toString(),
+                buildMonthLabel(month),
+                serviceDBBusiness.countRegisteredClientsBetween(startInstant, endInstant),
+                serviceDBTerminal.countNewTerminalsBetween(startInstant, endInstant),
+                serviceDBTerminal.countDeactivatedClientsBetween(startInstant, endInstant),
+                safeMoney(serviceDBInvoice.sumSuccessfulPaymentsBetween(start, end))
+        ));
+    }
+
+    return trend;
+}
+
+private long countRMPayLiteClients(Instant startDate, Instant endDate) {
+    LocalDate startLocalDate = startDate
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate();
+
+    LocalDate endLocalDate = endDate
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate();
+
+    return terminalPayAtTableRepository
+            .countDistinctUsersByRegistrationDateBetween(
+                    startLocalDate,
+                    endLocalDate
+            );
+}
+
 }

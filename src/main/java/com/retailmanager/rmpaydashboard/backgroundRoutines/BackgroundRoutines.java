@@ -24,7 +24,7 @@ public class BackgroundRoutines extends Thread{
         // Calcula la próxima fecha en que se debe disparar el evento
         Calendar nextExecutionTime = Calendar.getInstance();
         nextExecutionTime.set(Calendar.HOUR_OF_DAY, hour);
-        nextExecutionTime.set(Calendar.MINUTE, minute+2);
+        nextExecutionTime.set(Calendar.MINUTE, minute+1);
         if (nextExecutionTime.before(now) || nextExecutionTime.equals(now)) {
             // Si la hora programada ya ha pasado hoy, suma un día para la próxima ejecución
             nextExecutionTime.add(Calendar.DATE, 1);
@@ -40,12 +40,12 @@ public class BackgroundRoutines extends Thread{
                 LocalDateTime now = LocalDateTime.now();
                 System.out.println("ROUTINES IN BACKGROUND RUNNING:"+hour+":"+minute+" "+now.toString());
                 // Coloca aquí el código que deseas que se ejecute en el evento diario
-                 backgroundRoutinesService.deactivateExpiredTerminals();
-
+                backgroundRoutinesService.deactivateExpiredTerminals();
+/* 
                 backgroundRoutinesService.priorNotificaionEmail();
                 backgroundRoutinesService.lastDayNotificaionEmail();
                 backgroundRoutinesService.afterNotificaionEmail();
-                backgroundRoutinesService.automaticPayments(); 
+                backgroundRoutinesService.automaticPayments();  */
                 //AQUI LAS RUTINAS
             }
         };
