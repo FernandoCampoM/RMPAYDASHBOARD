@@ -10,6 +10,8 @@ import com.retailmanager.rmpaydashboard.models.Invoice;
 import com.retailmanager.rmpaydashboard.models.PaymentData;
 import com.retailmanager.rmpaydashboard.models.Service;
 import com.retailmanager.rmpaydashboard.models.Terminal;
+import com.retailmanager.rmpaydashboard.models.enums.ActivityEntityType;
+import com.retailmanager.rmpaydashboard.models.enums.ActivityType;
 import com.retailmanager.rmpaydashboard.models.enums.Environment;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.FileRepository;
@@ -17,12 +19,14 @@ import com.retailmanager.rmpaydashboard.repositories.InvoiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.PaymentDataRepository;
 import com.retailmanager.rmpaydashboard.repositories.ServiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
+import com.retailmanager.rmpaydashboard.services.DTO.ActivityLogCreateDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.ConfirmPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.InvoiceDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.PaymentDataDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.PaymentHistoryReport;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalsDoPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.doPaymentDTO;
+import com.retailmanager.rmpaydashboard.services.services.ActivityLogService.IActivityLogService;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.EmailBodyData;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
 import com.retailmanager.rmpaydashboard.services.services.Payment.IATHMovilService;
@@ -56,6 +60,7 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -94,7 +99,8 @@ public class InvoiceServices implements IInvoiceServices {
 
     @Value("${spring.profiles.active}")
     private String activeProfile;
-
+    @Autowired
+    private IActivityLogService activityLogService;
     public boolean isProd() {
         return Environment.PROD.name().equalsIgnoreCase(activeProfile);
     }
@@ -394,7 +400,9 @@ public class InvoiceServices implements IInvoiceServices {
                     objEmailBodyData.setInvoiceNumber(objInvoice.getInvoiceNumber());
                     objEmailBodyData.setTerminalsDoPayment(prmPaymentInfo.getTerminalsDoPayment());
                     emailService.notifyPaymentCreditCard(objEmailBodyData);
+                    createPaymentReceivedActivity(objInvoice, objEmailBodyData, paymentDescription);
                     break;
+                    
                 case "TOKEN":
                     objBusiness.setLastPayment(Instant.now());
 
@@ -444,6 +452,8 @@ public class InvoiceServices implements IInvoiceServices {
                     objEmailBodyData.setInvoiceNumber(objInvoice.getInvoiceNumber());
                     objEmailBodyData.setTerminalsDoPayment(prmPaymentInfo.getTerminalsDoPayment());
                     emailService.notifyPaymentToken(objEmailBodyData);
+                    createPaymentReceivedActivity(objInvoice, objEmailBodyData, paymentDescription);
+                    
                     break;
                 case "ATHMOVIL":
                     if (prmPaymentInfo.getAthPhone() == null) {
@@ -566,6 +576,8 @@ public class InvoiceServices implements IInvoiceServices {
                     objEmailBodyData.setInvoiceNumber(objInvoice.getInvoiceNumber());
                     objEmailBodyData.setTerminalsDoPayment(prmPaymentInfo.getTerminalsDoPayment());
                     emailService.notifyPaymentBankAccount(objEmailBodyData);
+                    createPaymentReceivedActivity(objInvoice, objEmailBodyData, paymentDescription);
+                    
                     break;
                 case "PAID-WITH-DISCOUNT":
                     objBusiness.setLastPayment(Instant.now());
@@ -607,13 +619,15 @@ public class InvoiceServices implements IInvoiceServices {
                     objEmailBodyData.setInvoiceNumber(objInvoice.getInvoiceNumber());
                     objEmailBodyData.setTerminalsDoPayment(prmPaymentInfo.getTerminalsDoPayment());
                     emailService.notifyPaymentDiscount(objEmailBodyData);
+                    createPaymentReceivedActivity(objInvoice, objEmailBodyData, paymentDescription);
+                    
                     break;
             }
             this.serviceDBBusiness.save(objBusiness);
             InvoiceDTO objInvoiceDTO = this.mapper.map(objInvoice, InvoiceDTO.class);
             return new ResponseEntity<InvoiceDTO>(objInvoiceDTO, HttpStatus.OK);
         } catch (ConsumeAPIException ex) {
-            System.err.println("Error en el consumo de BlackStone: CodigoHttp " + ex.getHttpStatusCode()
+            System.err.println("Error en el consumo de Black Stone: CodigoHttp " + ex.getHttpStatusCode()
                     + " \n Mensje: " + ex.getMessage());
 
             HashMap<String, String> map = new HashMap<>();
@@ -624,7 +638,40 @@ public class InvoiceServices implements IInvoiceServices {
             return new ResponseEntity<String>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+     @Transactional(rollbackFor = Exception.class)
+    public void createPaymentReceivedActivity(
+            Invoice objInvoice,
+            EmailBodyData objEmailBodyData,
+            List<String> paymentDescription) {
+        try {
 
+            ActivityLogCreateDTO activity = new ActivityLogCreateDTO();
+
+            activity.setActivityType(ActivityType.PAYMENT_RECEIVED);
+            activity.setTitle("Pago recibido");
+            activity.setDetail(
+                    "Pago de $" + objEmailBodyData.getAmount()
+                            + " procesado vía "
+                            + objEmailBodyData.getPaymethod()
+            );
+
+            activity.setEntityType(ActivityEntityType.PAYMENT);
+            activity.setEntityId(String.valueOf(objInvoice.getInvoiceNumber()));
+            activity.setBusinessId(objInvoice.getBusinessId());
+
+            activity.setAdditionalData(
+                    Map.of("description", paymentDescription)
+            );
+
+            activityLogService.createActivity(activity);
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Error al crear el log de actividad",
+                    e
+            );
+        }
+    }
     /**
      * Generates a unique string using UUID.
      *
@@ -1210,6 +1257,8 @@ public class InvoiceServices implements IInvoiceServices {
                     this.confirmOrRejectPaymnt(invoiceId, confirmPaymentDTO);
                     paymentInfoForEmail.setInvoiceNumber(invoice.getInvoiceNumber());
                     this.emailService.notifyPaymentATHMovil(paymentInfoForEmail);
+                    createPaymentReceivedActivity(invoice, paymentInfoForEmail, List.of(paymentInfoForEmail.getServiceDescription()));
+                    
                     return new ResponseEntity<>(invoice, HttpStatus.OK);
                 }
             }

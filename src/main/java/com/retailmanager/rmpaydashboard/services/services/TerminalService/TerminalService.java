@@ -10,14 +10,18 @@ import com.retailmanager.rmpaydashboard.models.Invoice;
 import com.retailmanager.rmpaydashboard.models.PaymentData;
 import com.retailmanager.rmpaydashboard.models.Service;
 import com.retailmanager.rmpaydashboard.models.Terminal;
+import com.retailmanager.rmpaydashboard.models.enums.ActivityEntityType;
+import com.retailmanager.rmpaydashboard.models.enums.ActivityType;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.InvoiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.ServiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.ShiftReporsitory;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
+import com.retailmanager.rmpaydashboard.services.DTO.ActivityLogCreateDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.BuyTerminalDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalsDoPaymentDTO;
+import com.retailmanager.rmpaydashboard.services.services.ActivityLogService.IActivityLogService;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.EmailBodyData;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
 import com.retailmanager.rmpaydashboard.services.services.Payment.IBlackStoneService;
@@ -39,6 +43,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
@@ -62,6 +67,8 @@ public class TerminalService implements ITerminalService {
     private InvoiceRepository serviceDBInvoice;
     @Autowired
     private ShiftReporsitory shiftReporsitory;
+     @Autowired
+    private IActivityLogService activityLogService;
 
     DecimalFormat formato = new DecimalFormat("#.##");
     String msgError = "";
@@ -276,6 +283,9 @@ public class TerminalService implements ITerminalService {
                     return new ResponseEntity<Boolean>(false, HttpStatus.PAYMENT_REQUIRED);
                 }
                 this.serviceDBTerminal.updateEnable(terminalId, enable);
+                if(!enable) {
+                    registerTerminalDeactivatedActivity(optional.get(), "Desactivación manual", "ACTIVATED");
+                }
                 return new ResponseEntity<Boolean>(true, HttpStatus.OK);
             }
         }
@@ -595,7 +605,49 @@ public class TerminalService implements ITerminalService {
         }
         return rta;
     }
+@Transactional(rollbackFor = Exception.class)
+    public void createActivityNewTerminal(
+        Terminal terminal) {
+        try {
 
+            ActivityLogCreateDTO activity = new ActivityLogCreateDTO();
+
+            activity.setActivityType(ActivityType.TERMINAL_ACTIVATED);
+            activity.setTitle("Nuevo terminal activado");
+            activity.setDetail(
+                "Terminal "
+                    + terminal.getName()
+                    + " - "
+                    + terminal.getBusiness().getName()
+            );
+            activity.setEntityType(ActivityEntityType.TERMINAL);
+            activity.setEntityId(terminal.getTerminalId());
+            activity.setBusinessId(
+                terminal.getBusiness().getBusinessId()
+            );
+
+            activity.setAdditionalData(
+                Map.of(
+                    "terminalId", terminal.getTerminalId(),
+                    "serial", terminal.getSerial() != null
+                        ? terminal.getSerial()
+                        : "",
+                    "principal", terminal.isPrincipal(),
+                    "serviceId", terminal.getService() != null
+                        ? terminal.getService().getServiceId()
+                        : ""
+                )
+            );
+
+            activityLogService.createActivity(activity);
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Error al crear el log de actividad",
+                    e
+            );
+        }
+    }
     public String uniqueString() {
         String random = UUID.randomUUID().toString();
         random = random.replaceAll("-", "");
@@ -763,5 +815,46 @@ public class TerminalService implements ITerminalService {
                 "El Terminal con terminalId " + idTerminal + " no existe en la Base de datos");
         throw objExeption;
     }
+    @Transactional(rollbackFor = Exception.class)
+    private void registerTerminalDeactivatedActivity(
+        Terminal terminal,
+        String reason,
+        String previousStatus) {
 
+    ActivityLogCreateDTO activity = new ActivityLogCreateDTO();
+
+    activity.setActivityType(ActivityType.TERMINAL_DEACTIVATED);
+    activity.setTitle("Terminal desactivada");
+    activity.setDetail(
+            "Terminal " + terminal.getName()
+                    + " de "
+                    + terminal.getBusiness().getName()
+                    + " fue desactivada");
+
+    activity.setEntityType(ActivityEntityType.TERMINAL);
+    activity.setEntityId(terminal.getTerminalId());
+
+    activity.setBusinessId(
+            terminal.getBusiness().getBusinessId());
+
+    if (terminal.getBusiness().getUser() != null) {
+        activity.setUserId(
+                terminal.getBusiness().getUser().getUserID());
+
+        activity.setUserName(
+                terminal.getBusiness().getUser().getName());
+    }
+
+    Map<String, Object> additionalData = new HashMap<>();
+    additionalData.put("terminalId", terminal.getTerminalId());
+    additionalData.put("terminalName", terminal.getName());
+    additionalData.put("serial", terminal.getSerial());
+    additionalData.put("reason", reason);
+    additionalData.put("previousStatus", previousStatus);
+    additionalData.put("newStatus", "DEACTIVATED");
+
+    activity.setAdditionalData(additionalData);
+
+    activityLogService.createActivity(activity);
+}
 }

@@ -26,5 +26,49 @@ public interface BusinessRepository extends CrudRepository<Business,Long> {
 
     @Query("SELECT b FROM Business b WHERE b.registerDate BETWEEN :startDate AND :endDate")
     List<Business> findAllByRegistrations(Instant startDate, Instant endDate);
-    
+    @Query("""
+       SELECT b
+       FROM Business b
+       WHERE b.registerDate BETWEEN :startDate AND :endDate
+       ORDER BY b.registerDate DESC
+       """)
+List<Business> findRegisteredBusinessesBetween(Instant startDate, Instant endDate);
+
+@Query("""
+       SELECT COUNT(DISTINCT b.user.userID)
+       FROM Business b
+       JOIN b.terminals t
+       WHERE t.enable = true
+       AND t.expirationDate IS NOT NULL
+       AND t.expirationDate >= :asOf
+       """)
+long countClientsWithActiveMembershipAt(Instant asOf);
+
+@Query("""
+       SELECT COUNT(DISTINCT b.user.userID)
+       FROM Business b
+       WHERE EXISTS (
+           SELECT 1
+           FROM Terminal t
+           WHERE t.business = b
+           AND t.enable = true
+           AND t.expirationDate IS NOT NULL
+           AND t.expirationDate >= :asOf
+       )
+       AND NOT EXISTS (
+           SELECT 1
+           FROM Terminal t2
+           WHERE t2.business = b
+           AND t2.lastTransmision IS NOT NULL
+           AND t2.lastTransmision > :inactiveLimit
+       )
+       """)
+long countInactiveClientsAt(Instant asOf, Instant inactiveLimit);
+
+@Query("""
+       SELECT COUNT(DISTINCT b.user.userID)
+       FROM Business b
+       WHERE b.registerDate BETWEEN :startDate AND :endDate
+       """)
+long countRegisteredClientsBetween(Instant startDate, Instant endDate);
 }

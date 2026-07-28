@@ -13,6 +13,8 @@ import com.retailmanager.rmpaydashboard.models.PaymentData;
 import com.retailmanager.rmpaydashboard.models.Service;
 import com.retailmanager.rmpaydashboard.models.Terminal;
 import com.retailmanager.rmpaydashboard.models.User;
+import com.retailmanager.rmpaydashboard.models.enums.ActivityEntityType;
+import com.retailmanager.rmpaydashboard.models.enums.ActivityType;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.FileRepository;
 import com.retailmanager.rmpaydashboard.repositories.InvoiceRepository;
@@ -20,12 +22,14 @@ import com.retailmanager.rmpaydashboard.repositories.ServiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
 import com.retailmanager.rmpaydashboard.repositories.UserRepository;
 import com.retailmanager.rmpaydashboard.repositories.UsersAppRepository;
+import com.retailmanager.rmpaydashboard.services.DTO.ActivityLogCreateDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.BusinessDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.InvoiceDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.RegistryDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.TerminalsDoPaymentDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.UserDTO;
+import com.retailmanager.rmpaydashboard.services.services.ActivityLogService.IActivityLogService;
 import com.retailmanager.rmpaydashboard.services.services.BusinessService.IBusinessService;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.EmailBodyData;
 import com.retailmanager.rmpaydashboard.services.services.EmailService.IEmailService;
@@ -54,11 +58,14 @@ import java.text.DecimalFormatSymbols;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -82,6 +89,9 @@ public class UserService implements IUserService {
 
     @Autowired
     private IResellerService resellerService;
+
+    @Autowired
+    private IActivityLogService activityLogService;
     DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);
     DecimalFormat formato = new DecimalFormat("#.##", symbols);
     @Autowired
@@ -177,6 +187,8 @@ public class UserService implements IUserService {
                 throw objExeption;
             } else {
                 User objUser = optional.get();
+                 Map<String, Object> changes =
+            detectUserChanges(objUser, prmUser);
                 objUser.setName(prmUser.getName());
                 if (prmUser.getPassword() != null && prmUser.getPassword().compareTo("unchanged") != 0) {
                     objUser.setPassword(new BCryptPasswordEncoder().encode(prmUser.getPassword()));
@@ -196,7 +208,15 @@ public class UserService implements IUserService {
                 User objUserRTA = this.serviceDBUser.save(objUser);
                 objUserRTA.setBusiness(null);
                 UserDTO userDTO = this.mapper.map(objUserRTA, UserDTO.class);
-
+/*
+     * Solo registra la actividad cuando realmente hubo cambios.
+     */
+    if (!changes.isEmpty()) {
+        registerClientUpdatedActivity(
+                objUserRTA,
+                LocalDateTime.now().toString(),
+                changes);
+    }
                 if (userDTO != null) {
                     userDTO.setPassword(null);
                     rta = new ResponseEntity<UserDTO>(userDTO, HttpStatus.OK);
@@ -541,6 +561,7 @@ public class UserService implements IUserService {
                         objBusinessDTO = (BusinessDTO) objResponseB.getBody();
                         if (prmRegistry.getAdditionalTerminals() != null && prmRegistry.getAdditionalTerminals() != 0 && objBusinessDTO != null) {
                             Business objBusiness = serviceDBBusiness.findById(objBusinessDTO.getBusinessId()).get();
+                            
                             if (objPaymentData != null) {
                                 objBusiness.setPaymentData(objPaymentData);
                                 objBusiness = serviceDBBusiness.save(objBusiness);
@@ -751,7 +772,8 @@ public class UserService implements IUserService {
                                     break;
                             }
                         }
-
+                        createClientRegisterActivity(objEmailBodyData.getInvoiceNumber(), objBusinessDTO.getBusinessId(), amount, prmRegistry.getPaymethod(), List.of(descripcion), objBusinessDTO.getName());
+                        createPaymentReceivedActivity(objEmailBodyData.getInvoiceNumber(), objBusinessDTO.getBusinessId(), amount, prmRegistry.getPaymethod(), List.of(descripcion));
                         emailService.notifyNewRegister(objEmailBodyData);
                         return new ResponseEntity<RegistryDTO>(prmRegistry, HttpStatus.CREATED);
                     } else {
@@ -776,7 +798,78 @@ public class UserService implements IUserService {
 
         return new ResponseEntity<String>(msg, HttpStatus.BAD_REQUEST);
     }
+ @Transactional(rollbackFor = Exception.class)
+    public void createPaymentReceivedActivity(
+            Long invoiceNumber,
+            Long BusinessId,
+            Double Amount,
+            String paymethod,
+            List<String> paymentDescription) {
+        try {
 
+            ActivityLogCreateDTO activity = new ActivityLogCreateDTO();
+
+            activity.setActivityType(ActivityType.PAYMENT_RECEIVED);
+            activity.setTitle("Pago recibido");
+            activity.setDetail(
+                    "Pago de $" + Amount
+                            + " procesado vía "
+                            + paymethod
+            );
+
+            activity.setEntityType(ActivityEntityType.PAYMENT);
+            activity.setEntityId(String.valueOf(invoiceNumber));
+            activity.setBusinessId(BusinessId);
+
+            activity.setAdditionalData(
+                    Map.of("description", paymentDescription)
+            );
+
+            activityLogService.createActivity(activity);
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Error al crear el log de actividad",
+                    e
+            );
+        }
+    }
+    @Transactional(rollbackFor = Exception.class)
+    public void createClientRegisterActivity(
+            Long invoiceNumber,
+            Long BusinessId,
+            Double Amount,
+            String paymethod,
+            List<String> paymentDescription, String BusinessName) {
+        try {
+
+            ActivityLogCreateDTO activity = new ActivityLogCreateDTO();
+
+            activity.setActivityType(ActivityType.CLIENT_REGISTERED);
+            activity.setTitle("Cliente registrado");
+            activity.setDetail(
+                    "El cliente se registro y realizo un Pago de $" + Amount
+                            + " procesado vía "
+                            + paymethod
+            );
+
+            activity.setEntityType(ActivityEntityType.CLIENT);
+            activity.setEntityId(String.valueOf(invoiceNumber));
+            activity.setBusinessId(BusinessId);
+
+            activity.setAdditionalData(
+                    Map.of("description", paymentDescription)
+            );
+
+            activityLogService.createActivity(activity);
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Error al crear el log de actividad",
+                    e
+            );
+        }
+    }
     /**
      * Generates a unique string using UUID.
      *
@@ -1052,6 +1145,121 @@ public class UserService implements IUserService {
         }
         return new ResponseEntity<User>(HttpStatus.BAD_REQUEST);
     }
+private void registerClientUpdatedActivity(
+        User business,
+        String updatedBy,
+        Map<String, Object> changedFields) {
 
+    Map<String, Object> additionalData = new HashMap<>();
+    additionalData.put("updatedBy", updatedBy);
+    additionalData.put("changedFields", changedFields);
 
+    ActivityLogCreateDTO activity = buildActivity(
+            ActivityType.CLIENT_UPDATED,
+            "Información actualizada",
+            "Los datos del cliente "
+                    + business.getName()
+                    + " fueron actualizados.",
+            ActivityEntityType.BUSINESS,
+            String.valueOf(business.getUserID()),
+            null,
+            business,
+            additionalData);
+
+    activityLogService.createActivity(activity);
+}
+private ActivityLogCreateDTO buildActivity(
+        ActivityType activityType,
+        String title,
+        String detail,
+        ActivityEntityType entityType,
+        String entityId,
+        Long businessId,
+        User user,
+        Map<String, Object> additionalData) {
+
+    ActivityLogCreateDTO activity = new ActivityLogCreateDTO();
+
+    activity.setActivityType(activityType);
+    activity.setTitle(title);
+    activity.setDetail(detail);
+    activity.setEntityType(entityType);
+    activity.setEntityId(entityId);
+    activity.setBusinessId(businessId);
+
+    if (user != null) {
+        activity.setUserId(user.getUserID());
+        activity.setUserName(user.getName());
+    }
+
+    activity.setAdditionalData(additionalData);
+
+    return activity;
+}
+private Map<String, Object> detectUserChanges(
+        User currentUser,
+        UserDTO newUserData) {
+
+    Map<String, Object> changes = new HashMap<>();
+
+    addChangeIfDifferent(
+            changes,
+            "name",
+            currentUser.getName(),
+            newUserData.getName());
+
+    addChangeIfDifferent(
+            changes,
+            "username",
+            currentUser.getUsername(),
+            newUserData.getUsername());
+
+    addChangeIfDifferent(
+            changes,
+            "email",
+            currentUser.getEmail(),
+            newUserData.getEmail());
+
+    addChangeIfDifferent(
+            changes,
+            "phone",
+            currentUser.getPhone(),
+            newUserData.getPhone());
+
+    addChangeIfDifferent(
+            changes,
+            "rol",
+            currentUser.getRol(),
+            newUserData.getRol());
+
+    /*
+     * Por seguridad no guardamos la contraseña anterior ni la nueva.
+     * Solamente registramos que fue modificada.
+     */
+    if (newUserData.getPassword() != null
+            && !"unchanged".equals(newUserData.getPassword())) {
+
+        Map<String, Object> passwordChange = new HashMap<>();
+        passwordChange.put("changed", true);
+
+        changes.put("password", passwordChange);
+    }
+
+    return changes;
+}
+private void addChangeIfDifferent(
+        Map<String, Object> changes,
+        String fieldName,
+        Object oldValue,
+        Object newValue) {
+
+    if (!Objects.equals(oldValue, newValue)) {
+
+        Map<String, Object> fieldChange = new HashMap<>();
+        fieldChange.put("oldValue", oldValue);
+        fieldChange.put("newValue", newValue);
+
+        changes.put(fieldName, fieldChange);
+    }
+}
 }

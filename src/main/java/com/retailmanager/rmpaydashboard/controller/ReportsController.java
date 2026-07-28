@@ -116,10 +116,18 @@ public class ReportsController {
         return reportService.getReportPonches(businessId, startDate, endDate, userBusinessId);
     }
 
-    @GetMapping("reports/dashboard/kpis/{businessId}")
+    @GetMapping("/reports/dashboard/kpis/{businessId}")
 public ResponseEntity<?> getDashboardKpis(
         @PathVariable Long businessId) {
 
     return reportService.getDashboardKpis(businessId);
+}
+@GetMapping("/reports/admin/dashboard")
+public ResponseEntity<?> getAdminDashboard(
+        @RequestParam Integer year,
+        @RequestParam Integer month,
+        @RequestParam(defaultValue = "6") Integer trendMonths
+) {
+    return reportService.getAdminDashboard(year, month, trendMonths);
 }
 }

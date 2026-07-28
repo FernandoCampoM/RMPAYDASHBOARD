@@ -1,5 +1,6 @@
 package com.retailmanager.rmpaydashboard.repositories;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,4 +15,13 @@ public interface TerminalPayAtTableRepository extends CrudRepository<RMPayAtTheT
     List<RMPayAtTheTable_Terminal> findByUserId(Long userId);
 
     Optional<RMPayAtTheTable_Terminal> findBySerialNumber(String serialNumber);
+    @Query("""
+       SELECT COUNT(DISTINCT t.user.userId)
+       FROM RMPayAtTheTable_Terminal t
+       WHERE t.registrationDate BETWEEN :startDate AND :endDate
+       """)
+long countDistinctUsersByRegistrationDateBetween(
+        LocalDate startDate,
+        LocalDate endDate
+);
 }
