@@ -70,6 +70,9 @@ public interface ProductRepository extends CrudRepository<Product,Long>,PagingAn
     @Query(value = "select p from Product p where p.category.business.businessId=:businessId order by p.name")
     public List<Product> findProductsByBusinessId(Long businessId);
 
+    @Query("select p from Product p join p.modifierGroups mg where mg.modifierGroupId = :modifierGroupId")
+    public List<Product> findProductsByModifierGroupId(String modifierGroupId);
+
     @Query(value = "select p from Product p where p.category.business.businessId=:businessId and p.quantity < p.minimumLevel")  
     public List<Product> getLowInventory(Long businessId);
 

@@ -186,7 +186,7 @@ public class BusinessController {
      * @return             a ResponseEntity containing the activations for the specified month and business
      */
     @GetMapping("/business/activations")
-    public ResponseEntity<?> activationsByMonth(@RequestParam(name ="startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Instant startDate, @RequestParam(name ="endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Instant endDate){
+    public ResponseEntity<?> activationsByMonth(@RequestParam(name ="startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate, @RequestParam(name ="endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate){
         return businessService.getActivations(startDate, endDate);
     }
     /**

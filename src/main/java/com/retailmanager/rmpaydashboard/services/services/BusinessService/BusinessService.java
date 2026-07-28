@@ -1100,87 +1100,87 @@ private Map<String, Object> createChange(
      * @return        a ResponseEntity containing the activations for the given month
      */
     @Override
-@Transactional(readOnly = true)
-public ResponseEntity<?> getActivations(Instant starDate, Instant endDate) {
-    // ── NEW: Activation dashboard DTO response ──────────────────
-    // Purpose : Builds activation dashboard metrics without using HashMap responses
-    // Depends on : BusinessRepository.findAllByRegistrations, TerminalRepository.findAllByActivations, Terminal fields
-    // Does NOT modify : repository contracts, entity fields, synchronous service contract
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getActivations(Instant starDate, Instant endDate) {
+        HashMap<String, Object> result = new HashMap<>();
+        
+        List<Business> listBusiness = this.serviceDBBusiness.findAllByRegistrations(starDate, endDate);
+        List<Terminal> listTerminal = this.serviceDBTerminal.findAllByActivations(starDate, endDate);
+        //Activaciones y registraciones del mes anterior en el mismo rango de fechas
+        Instant previousStartMonth = starDate
+        .atZone(ZoneId.systemDefault())
+        .minusMonths(1)
+        .toInstant();
+        Instant previousEndMonth = endDate
+        .atZone(ZoneId.systemDefault())
+        .minusMonths(1)
+        .toInstant();
+        List<Business> lastMonthlistBusiness = this.serviceDBBusiness.findAllByRegistrations(previousStartMonth, previousEndMonth);
+        List<Terminal>  lastMonthlistTerminal = this.serviceDBTerminal.findAllByActivations(previousStartMonth, previousEndMonth); 
+        List<HashMap<String, Object>> listRegistraciones = new ArrayList<>();
+        
+        List<HashMap<String, Object>> listActivaciones = new ArrayList<>();
+        
+        for (Business business : listBusiness) {
+            HashMap<String, Object> registro = new HashMap<>();
+            registro.put("businessId", business.getBusinessId());
+            registro.put("businessName", business.getName());
+            registro.put("town",business.getAddress().getCity()); 
+            registro.put("phoneNumber", business.getBusinessPhoneNumber());
+            registro.put("user-name",business.getUser().getName());
+            listRegistraciones.add(registro);
+        }
+        Double totalSales=0.0;
+        for(Terminal terminal:listTerminal){
+            HashMap<String, Object> activacion = new HashMap<>();
+            Service terminalService = terminal.getService();
+            String serviceName = terminalService != null ? terminalService.getServiceName() : "Sin servicio";
+            Double serviceValue = terminalService != null ? terminalService.getServiceValue() : 0.0;
+            activacion.put("terminalId", terminal.getTerminalId());
+            activacion.put("businesName", terminal.getBusiness().getName());
+            if(terminal.getLastPaymentValue()==null){
+                terminal.setLastPaymentValue(0.0);
+            }
+            if(terminal.getRegisterDate()!=null && terminal.getLastPayment()!=null && terminalService != null){
+                totalSales+=terminal.getLastPaymentValue();
 
     List<Business> listBusiness = this.serviceDBBusiness.findAllByRegistrations(starDate, endDate);
     List<Terminal> listTerminal = this.serviceDBTerminal.findAllByActivations(starDate, endDate);
 
-    Instant previousStartMonth = starDate
-            .atZone(ZoneId.systemDefault())
-            .minusMonths(1)
-            .toInstant();
+                if(sameMonth){
+                    if(terminal.isPrincipal()){
+                        activacion.put("serviceName", "TERMINAL PRINCIPAL " + serviceName);
+                    }else{
+                        activacion.put("serviceName", "TERMINAL ADICIONAL " + serviceName);
+                    }
+                    
+                }else{
+                    if(terminal.isPrincipal()){
+                        activacion.put("serviceName", "RENOVACIÓN TERMINAL PRINCIPAL"+terminal.getService().getServiceName());
+                    }else{
+                        activacion.put("serviceName", "RENOVACIÓN TERMINAL ADICIONAL "+terminal.getService().getServiceName());
+                    }
+                }
 
-    Instant previousEndMonth = endDate
-            .atZone(ZoneId.systemDefault())
-            .minusMonths(1)
-            .toInstant();
+            }
+            activacion.putIfAbsent("serviceName", serviceName);
+            activacion.put("serviceValue", serviceValue);
+            activacion.put("user-name", terminal.getBusiness().getUser().getName());
+            activacion.put("serial", terminal.getSerial());
+            activacion.put("terminalName", terminal.getName());
+            listActivaciones.add(activacion);
+        }
+        result.put("totalRegistrations", listRegistraciones.size());
+        result.put("totalActivations", listActivaciones.size());
+        result.put("lastMonthRegistrations", lastMonthlistBusiness.size());
+        result.put("lastMonthActivations", lastMonthlistTerminal.size()); 
+        result.put("totalSales", totalSales);
+        result.put("registrations", listRegistraciones);
+        result.put("activations", listActivaciones);
 
-    List<Business> lastMonthlistBusiness = this.serviceDBBusiness.findAllByRegistrations(previousStartMonth, previousEndMonth);
-    List<Terminal> lastMonthlistTerminal = this.serviceDBTerminal.findAllByActivations(previousStartMonth, previousEndMonth);
-
-    List<RegistrationDto> registrations = listBusiness.stream()
-            .map(this::toRegistrationDto)
-            .toList();
-
-    double totalSales = listTerminal.stream()
-            .map(Terminal::getLastPaymentValue)
-            .filter(Objects::nonNull)
-            .mapToDouble(Double::doubleValue)
-            .sum();
-
-    List<ActivationDto> activations = listTerminal.stream()
-            .map(this::toActivationDto)
-            .toList();
-
-    Instant inactiveLimit = Instant.now().minus(30, ChronoUnit.DAYS);
-
-    long activeTerminals = this.serviceDBTerminal.countCurrentlyActiveTerminals(inactiveLimit);
-    long inactiveTerminals = this.serviceDBTerminal.countInactiveTerminals(inactiveLimit);
-    long deactivatedTerminals = this.serviceDBTerminal.countDeactivatedTerminals();
-    long totalTerminals = this.serviceDBTerminal.countAllTerminals();
-
-    long totalRegistrations = registrations.size();
-    long totalActivations = activations.size();
-    long lastMonthRegistrations = lastMonthlistBusiness.size();
-    long lastMonthActivations = lastMonthlistTerminal.size();
-
-    StatusDistributionDto statusDistribution = new StatusDistributionDto(
-            activeTerminals,
-            inactiveTerminals,
-            deactivatedTerminals,
-            totalRegistrations,
-            totalTerminals
-    );
-
-    StatusDistributionPercentageDto statusDistributionPercentage = buildStatusDistributionPercentage(statusDistribution);
-
-    ActivationDashboardResponseDto response = new ActivationDashboardResponseDto(
-            totalRegistrations,
-            totalActivations,
-            lastMonthRegistrations,
-            lastMonthActivations,
-            totalSales,
-            calculateVariationPercentage(totalActivations, lastMonthActivations),
-            calculateVariationPercentage(totalRegistrations, lastMonthRegistrations),
-            activeTerminals,
-            inactiveTerminals,
-            deactivatedTerminals,
-            totalTerminals,
-            registrations,
-            activations,
-            buildDailyTrend(listBusiness, listTerminal),
-            statusDistribution,
-            statusDistributionPercentage
-    );
-
-    return new ResponseEntity<>(response, HttpStatus.OK);
-}
-    
+        return new ResponseEntity<HashMap<String, Object>>(result,HttpStatus.OK);
+        
+    }
     @Override
     public ResponseEntity<?> getMonthActivations() {
         // TODO: FALTA IMPLEMENTAR

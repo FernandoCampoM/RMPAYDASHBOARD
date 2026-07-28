@@ -2,6 +2,9 @@ package com.retailmanager.rmpaydashboard.services.DTO;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.retailmanager.rmpaydashboard.models.Product;
@@ -75,6 +78,7 @@ public class ProductDTO {
     private Instant createdAt;
     //@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private Instant updatedAt;
+    private List<String> modifierGroupIds;
 
     public static ProductDTO tOProduct(Product product) {
         ProductDTO objProduct = new ProductDTO();
@@ -95,6 +99,12 @@ public class ProductDTO {
         objProduct.setSuggestedPurchase(product.getMaximumLevel() - product.getQuantity());
         objProduct.setCreatedAt(product.getCreatedAt());
         objProduct.setUpdatedAt(product.getUpdatedAt());
+        objProduct.setReducedTax(product.isReducedTax());
+        objProduct.setModifierGroupIds(product.getModifierGroups() == null
+                ? new ArrayList<>()
+                : product.getModifierGroups().stream()
+                    .map(modifierGroup -> modifierGroup.getModifierGroupId())
+                    .collect(Collectors.toList()));
         return objProduct;
     }
 }

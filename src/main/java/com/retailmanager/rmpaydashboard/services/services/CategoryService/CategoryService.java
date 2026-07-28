@@ -129,6 +129,7 @@ public class CategoryService implements ICategoryService {
              objCategory.setName(prmCategory.getName());
              objCategory.setColor(prmCategory.getColor());
              objCategory.setPosition(prmCategory.getPosition());
+             objCategory.setIcon(prmCategory.getIcon());
              
              if(objCategory!=null){
                 objCategory=this.serviceDBCategory.save(objCategory);

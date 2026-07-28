@@ -25,8 +25,17 @@ public class CategoryDTO {
     
     private String color;
     private String position;
+    private String icon = "";
    // @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private Instant createdAt;
     //@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private Instant updatedAt;
+
+    public String getIcon() {
+        return icon != null ? icon : "";
+    }
+
+    public void setIcon(String icon) {
+        this.icon = icon != null ? icon : "";
+    }
 }
