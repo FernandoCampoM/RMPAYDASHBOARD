@@ -1144,8 +1144,8 @@ private Map<String, Object> createChange(
             if(terminal.getRegisterDate()!=null && terminal.getLastPayment()!=null && terminalService != null){
                 totalSales+=terminal.getLastPaymentValue();
 
-    List<Business> listBusiness = this.serviceDBBusiness.findAllByRegistrations(starDate, endDate);
-    List<Terminal> listTerminal = this.serviceDBTerminal.findAllByActivations(starDate, endDate);
+                boolean sameMonth = YearMonth.from(terminal.getRegisterDate().atZone(ZoneOffset.UTC))
+                        .equals(YearMonth.from(terminal.getLastPayment().atZone(ZoneOffset.UTC)));
 
                 if(sameMonth){
                     if(terminal.isPrincipal()){
