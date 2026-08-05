@@ -20,6 +20,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.retailmanager.rmpaydashboard.services.DTO.RegistryDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ClientPasswordResetRequestDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ForgotPasswordRequestDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.ResetPasswordRequestDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.UpdatePasswordAdminDTO;
 import com.retailmanager.rmpaydashboard.services.DTO.UserDTO;
 import com.retailmanager.rmpaydashboard.services.services.UserService.IUserService;
@@ -155,6 +158,16 @@ public class UserController {
         return this.userService.registryWithBusiness(prmRegistry);
     }
 
+    @PostMapping("/users/password-recovery/request")
+    public ResponseEntity<?> requestPasswordRecovery(@Valid @RequestBody ForgotPasswordRequestDTO forgotPasswordRequestDTO){
+        return this.userService.requestPasswordRecovery(forgotPasswordRequestDTO.getEmail());
+    }
+
+    @PostMapping("/users/password-recovery/reset")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO resetPasswordRequestDTO){
+        return this.userService.resetPassword(resetPasswordRequestDTO.getToken(), resetPasswordRequestDTO.getNewPassword());
+    }
+
 
     /**
      * Retrieves a list of users with manager roles.
@@ -176,5 +189,10 @@ public class UserController {
     @PutMapping("/users/password/{userId}")
     public ResponseEntity<?> updatePasswordAdmin(@Valid @PathVariable @Positive(message = "userId.positive")Long userId, @RequestBody UpdatePasswordAdminDTO prmPassword){
         return this.userService.updatePasswordForAdmin(userId, prmPassword.getNewPassword());
+    }
+
+    @PutMapping("/users/{userId}/password/reset-client")
+    public ResponseEntity<?> resetClientPassword(@Valid @PathVariable @Positive(message = "userId.positive") Long userId, @Valid @RequestBody ClientPasswordResetRequestDTO passwordResetRequestDTO){
+        return this.userService.resetClientPasswordByAdmin(userId, passwordResetRequestDTO.getNewPassword());
     }
 }

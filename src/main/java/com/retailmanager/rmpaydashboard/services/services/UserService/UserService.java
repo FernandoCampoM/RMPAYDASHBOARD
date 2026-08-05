@@ -10,6 +10,7 @@ import com.retailmanager.rmpaydashboard.models.Business;
 import com.retailmanager.rmpaydashboard.models.FileModel;
 import com.retailmanager.rmpaydashboard.models.Invoice;
 import com.retailmanager.rmpaydashboard.models.PaymentData;
+import com.retailmanager.rmpaydashboard.models.PasswordResetToken;
 import com.retailmanager.rmpaydashboard.models.Service;
 import com.retailmanager.rmpaydashboard.models.Terminal;
 import com.retailmanager.rmpaydashboard.models.User;
@@ -18,6 +19,7 @@ import com.retailmanager.rmpaydashboard.models.enums.ActivityType;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
 import com.retailmanager.rmpaydashboard.repositories.FileRepository;
 import com.retailmanager.rmpaydashboard.repositories.InvoiceRepository;
+import com.retailmanager.rmpaydashboard.repositories.PasswordResetTokenRepository;
 import com.retailmanager.rmpaydashboard.repositories.ServiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
 import com.retailmanager.rmpaydashboard.repositories.UserRepository;
@@ -46,6 +48,8 @@ import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -53,6 +57,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.Duration;
@@ -68,6 +77,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Base64;
 import java.util.stream.Collectors;
 
 
@@ -86,6 +96,8 @@ public class UserService implements IUserService {
     private InvoiceRepository serviceDBInvoice;
     @Autowired
     private FileRepository fileRepository;
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Autowired
     private IResellerService resellerService;
@@ -112,6 +124,9 @@ public class UserService implements IUserService {
 
     @Autowired
     private IATHMovilService athMovilService;
+
+    @Value("${rmpay.frontend-url:https://rmpay.retailmanagerpr.com}")
+    private String frontendUrl;
 
     /**
      * Save user data into the database and return the response entity
@@ -1145,10 +1160,193 @@ public class UserService implements IUserService {
         }
         return new ResponseEntity<User>(HttpStatus.BAD_REQUEST);
     }
-private void registerClientUpdatedActivity(
-        User business,
-        String updatedBy,
-        Map<String, Object> changedFields) {
+
+    @Override
+    @Transactional
+    public ResponseEntity<?> requestPasswordRecovery(String email) {
+        HashMap<String, String> response = new HashMap<>();
+        response.put("message", "Si el correo existe, recibira instrucciones para recuperar su contrasena.");
+
+        if (email == null || email.isBlank()) {
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+
+        Optional<User> optionalUser = this.serviceDBUser.findOneByEmail(email.trim());
+        if (optionalUser.isEmpty() || !optionalUser.get().isEnable() || optionalUser.get().getEmail() == null) {
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+
+        User user = optionalUser.get();
+        String token = UUID.randomUUID().toString() + UUID.randomUUID();
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setUser(user);
+        resetToken.setTokenHash(hashToken(token));
+        resetToken.setCreatedAt(Instant.now());
+        resetToken.setExpiresAt(Instant.now().plus(Duration.ofHours(1)));
+        resetToken.setUsed(false);
+
+        this.passwordResetTokenRepository.deleteByUserId(user.getUserID());
+        this.passwordResetTokenRepository.save(resetToken);
+
+        String resetLink = buildPasswordResetLink(token);
+        String htmlBody = buildPasswordRecoveryEmail(user, resetLink);
+        this.emailService.sendHtmlEmailWithAttachmentAndCCO(
+                List.of(user.getEmail()),
+                "Recuperacion de contrasena RMpay",
+                htmlBody,
+                null,
+                null,
+                null);
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<?> resetPassword(String token, String newPassword) {
+        HashMap<String, String> response = new HashMap<>();
+
+        if (token == null || token.isBlank()) {
+            response.put("message", "Token invalido.");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+
+        Optional<PasswordResetToken> optionalToken = this.passwordResetTokenRepository.findOneByTokenHash(hashToken(token));
+        if (optionalToken.isEmpty()) {
+            response.put("message", "El enlace de recuperacion no es valido.");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+
+        PasswordResetToken resetToken = optionalToken.get();
+        if (resetToken.isUsed() || resetToken.getExpiresAt().isBefore(Instant.now())) {
+            response.put("message", "El enlace de recuperacion expiro. Solicite uno nuevo.");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+
+        User user = resetToken.getUser();
+        user.setPassword(new BCryptPasswordEncoder().encode(newPassword));
+        this.serviceDBUser.save(user);
+
+        resetToken.setUsed(true);
+        this.passwordResetTokenRepository.save(resetToken);
+
+        response.put("message", "Contrasena actualizada correctamente.");
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<?> resetClientPasswordByAdmin(Long userId, String newPassword) {
+        HashMap<String, String> response = new HashMap<>();
+
+        if (newPassword == null || newPassword.isBlank() || newPassword.length() < 8) {
+            response.put("message", "La nueva contrasena debe tener al menos 8 caracteres.");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+
+        Optional<User> optionalUser = this.serviceDBUser.findById(userId);
+        if (optionalUser.isEmpty()) {
+            response.put("message", "El usuario no existe.");
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        }
+
+        User user = optionalUser.get();
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            response.put("message", "El usuario no tiene email configurado para enviar la nueva contrasena.");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+
+        user.setPassword(new BCryptPasswordEncoder().encode(newPassword));
+        this.serviceDBUser.save(user);
+
+        String htmlBody = buildClientPasswordResetEmail(user, newPassword);
+        this.emailService.sendHtmlEmailWithAttachmentAndCCO(
+                List.of(user.getEmail()),
+                "Su contrasena temporal RMpay",
+                htmlBody,
+                null,
+                null,
+                null);
+
+        response.put("message", "Contrasena restablecida correctamente. Se envio un correo al cliente.");
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    private String buildPasswordResetLink(String token) {
+        String baseUrl = (this.frontendUrl == null || this.frontendUrl.isBlank())
+                ? "https://rmpay.retailmanagerpr.com"
+                : this.frontendUrl.trim();
+        while (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return baseUrl + "/#/reset-password?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("No se pudo generar el hash del token", e);
+        }
+    }
+
+    private String buildPasswordRecoveryEmail(User user, String resetLink) {
+        String userName = user.getName() == null || user.getName().isBlank()
+                ? user.getUsername()
+                : user.getName();
+        return loadTemplate("templates/password-recovery-email.html")
+                .replace("{{USER_NAME}}", escapeHtml(userName))
+                .replace("{{RESET_LINK}}", escapeHtml(resetLink));
+    }
+
+    private String buildClientPasswordResetEmail(User user, String temporaryPassword) {
+        String userName = user.getName() == null || user.getName().isBlank()
+                ? user.getUsername()
+                : user.getName();
+        return loadTemplate("templates/client-password-reset-email.html")
+                .replace("{{USER_NAME}}", escapeHtml(userName))
+                .replace("{{USERNAME}}", escapeHtml(user.getUsername()))
+                .replace("{{TEMP_PASSWORD}}", escapeHtml(temporaryPassword))
+                .replace("{{LOGIN_LINK}}", escapeHtml(buildLoginLink()));
+    }
+
+    private String buildLoginLink() {
+        String baseUrl = (this.frontendUrl == null || this.frontendUrl.isBlank())
+                ? "https://rmpay.retailmanagerpr.com"
+                : this.frontendUrl.trim();
+        while (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return baseUrl + "/#/login";
+    }
+
+    private String loadTemplate(String templatePath) {
+        try {
+            ClassPathResource resource = new ClassPathResource(templatePath);
+            return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new IllegalStateException("No se pudo cargar la plantilla " + templatePath, e);
+        }
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
+
+    private void registerClientUpdatedActivity(
+            User business,
+            String updatedBy,
+            Map<String, Object> changedFields) {
 
     Map<String, Object> additionalData = new HashMap<>();
     additionalData.put("updatedBy", updatedBy);

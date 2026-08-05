@@ -30,6 +30,9 @@ public interface IUserService {
     public ResponseEntity<?> getAllUsersManagers();
 
     public ResponseEntity<?> updatePasswordForAdmin(Long userId, String password);
+    public ResponseEntity<?> resetClientPasswordByAdmin(Long userId, String newPassword);
+    public ResponseEntity<?> requestPasswordRecovery(String email);
+    public ResponseEntity<?> resetPassword(String token, String newPassword);
     
 
     

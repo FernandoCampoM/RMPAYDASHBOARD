@@ -52,6 +52,8 @@ public class WebSecurityConfig {
                     .requestMatchers(HttpMethod.GET,"/api/payment-methods/**").permitAll()
                     .requestMatchers(HttpMethod.GET,"/api/resellers/**").permitAll()
                     .requestMatchers(HttpMethod.POST,"/api/register").permitAll()
+                    .requestMatchers(HttpMethod.POST,"/api/users/password-recovery/request").permitAll()
+                    .requestMatchers(HttpMethod.POST,"/api/users/password-recovery/reset").permitAll()
                     .requestMatchers(HttpMethod.POST,"/api/file").permitAll()
                     .requestMatchers(HttpMethod.POST,"/api/payAtTheTable/users").permitAll()
                     .requestMatchers(HttpMethod.POST,"/api/payAtTheTable/users/login").permitAll()

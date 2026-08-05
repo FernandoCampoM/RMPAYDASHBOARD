@@ -810,6 +810,10 @@ private Map<String, Object> detectBusinessChanges(
 
     Map<String, Object> changes = new HashMap<>();
 
+    if (currentBusiness==null){
+        return changes;
+    }
+
     addChangeIfDifferent(
             changes,
             "merchantId",

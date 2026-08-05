@@ -20,6 +20,7 @@ services:
       SQL_PASSWORD: Colombia@602
       spring_profiles_active: docker
       hibernate_ddl_auto: update
+      BASE_URL_FRONTEND: https://rmpay.retailmanagerpr.com
     ports:
       - "9094:9092"
     volumes:
