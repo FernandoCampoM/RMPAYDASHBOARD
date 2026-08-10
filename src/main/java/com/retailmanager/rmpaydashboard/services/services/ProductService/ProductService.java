@@ -188,6 +188,7 @@ public class ProductService implements IProductService {
         objProduct.setCode(prmProduct.getCode());
         objProduct.setEstatal(prmProduct.isEstatal());
         objProduct.setMunicipal(prmProduct.isMunicipal());
+        objProduct.setReducedTax(prmProduct.isReducedTax());
         objProduct.setEnable(prmProduct.getEnable());
         objProduct.setQuantity(prmProduct.getQuantity());
         objProduct.setMinimumLevel(prmProduct.getMinimumLevel());
