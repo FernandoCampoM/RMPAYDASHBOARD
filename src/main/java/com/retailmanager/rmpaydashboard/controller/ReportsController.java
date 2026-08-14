@@ -91,6 +91,20 @@ public class ReportsController {
         return reportService.getTips(businessId, startUtc, endUtc);
     }
 
+    @GetMapping("/reports/commissions")
+    public ResponseEntity<?> getCommissions(@RequestParam(name = "businessId") Long businessId,
+                                     @RequestParam(name = "startUtc") Instant startUtc,
+                                     @RequestParam(name = "endUtc") Instant endUtc) {
+        return reportService.getCommissions(businessId, startUtc, endUtc);
+    }
+
+    @GetMapping("/reports/commissions/audit")
+    public ResponseEntity<?> getCommissionsAudit(@RequestParam(name = "businessId") Long businessId,
+                                     @RequestParam(name = "startUtc") Instant startUtc,
+                                     @RequestParam(name = "endUtc") Instant endUtc) {
+        return reportService.getCommissionsAudit(businessId, startUtc, endUtc);
+    }
+
     @GetMapping("/reports/taxes")
     public ResponseEntity<?> getTaxes(@RequestParam(name = "businessId") Long businessId,
                                       @RequestParam(name = "startUtc") Instant startUtc,

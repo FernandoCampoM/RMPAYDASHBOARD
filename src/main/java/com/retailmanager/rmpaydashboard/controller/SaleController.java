@@ -6,10 +6,12 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import com.retailmanager.rmpaydashboard.services.DTO.SaleDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.SaleEmployeeCommissionDTO;
 import com.retailmanager.rmpaydashboard.services.services.SaleService.ISaleService;
 
 import jakarta.validation.Valid;
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -33,6 +35,12 @@ public class SaleController {
     public ResponseEntity<?> updateSale(@PathVariable String saleId, @Valid @RequestBody SaleDTO saleDTO) {
         return saleService.UpdateSale(saleId, saleDTO);
     }
+
+    @PutMapping("/sales/{saleId}/commissions")
+    public ResponseEntity<?> syncSaleCommissions(@PathVariable String saleId, @RequestBody List<SaleEmployeeCommissionDTO> employeeCommissions) {
+        return saleService.syncEmployeeCommissions(saleId, employeeCommissions);
+    }
+
     @PutMapping("/sales/{saleId}/status/{status}")
     public ResponseEntity<?> updateSaleStatus(@PathVariable String saleId, @PathVariable String status) {
         return saleService.UpdateStatus(saleId, status);

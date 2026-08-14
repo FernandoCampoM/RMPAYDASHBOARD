@@ -92,6 +92,9 @@ public class Sale {
     @OneToMany(mappedBy = "sale",fetch = FetchType.LAZY)
     private List<Transactions> transactions = new ArrayList<>();
 
+    @OneToMany(mappedBy = "sale", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SaleEmployeeCommission> employeeCommissions = new ArrayList<>();
+
     public SaleDTO toDTO() {
         SaleDTO saleDTO = new SaleDTO();
         saleDTO.setSaleID(this.getSaleID());

@@ -6,13 +6,20 @@ import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadN
 import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadYaExisteException;
 import com.retailmanager.rmpaydashboard.models.Business;
 import com.retailmanager.rmpaydashboard.models.ItemForSale;
+import com.retailmanager.rmpaydashboard.models.Product;
 import com.retailmanager.rmpaydashboard.models.Sale;
+import com.retailmanager.rmpaydashboard.models.SaleEmployeeCommission;
 import com.retailmanager.rmpaydashboard.models.Terminal;
+import com.retailmanager.rmpaydashboard.models.UsersBusiness;
 import com.retailmanager.rmpaydashboard.repositories.BusinessRepository;
+import com.retailmanager.rmpaydashboard.repositories.BusinessConfigurationRepository;
 import com.retailmanager.rmpaydashboard.repositories.ProductRepository;
 import com.retailmanager.rmpaydashboard.repositories.SaleRepository;
+import com.retailmanager.rmpaydashboard.repositories.SaleEmployeeCommissionRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
+import com.retailmanager.rmpaydashboard.repositories.UsersAppRepository;
 import com.retailmanager.rmpaydashboard.services.DTO.SaleDTO;
+import com.retailmanager.rmpaydashboard.services.DTO.SaleEmployeeCommissionDTO;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -35,11 +42,17 @@ public class SaleService implements ISaleService {
     @Autowired
     private BusinessRepository serviceDBBusiness;
     @Autowired
+    private BusinessConfigurationRepository businessConfigurationRepository;
+    @Autowired
     private TerminalRepository serviceDBTerminal;
     @Autowired
     private SaleRepository serviceDBSale;
     @Autowired
     private ProductRepository serviceDBProduct;
+    @Autowired
+    private SaleEmployeeCommissionRepository saleEmployeeCommissionRepository;
+    @Autowired
+    private UsersAppRepository usersAppRepository;
 
     /**
      * Adds a sale to the database.
@@ -74,6 +87,7 @@ public class SaleService implements ISaleService {
                     serviceDBProduct.reduceInventory(item.getProductId(), item.getQuantity());
                 }
                 sale = this.serviceDBSale.save(sale);
+                saveEmployeeCommissions(saleDTO, sale, business);
                 saleDTO.setSaleID(sale.getSaleID());
                 terminal.setLastTransmision(Instant.now());
                 serviceDBTerminal.save(terminal);
@@ -195,6 +209,119 @@ public class SaleService implements ISaleService {
         return new ArrayList<>();
     }
 
+    private void saveEmployeeCommissions(SaleDTO saleDTO, Sale sale, Business business) {
+        if (!isEmployeeCommissionsEnabled(business.getBusinessId())) {
+            return;
+        }
+
+        if (saleDTO.getEmployeeCommissions() == null || saleDTO.getEmployeeCommissions().isEmpty()) {
+            calculateEmployeeCommissions(sale);
+            return;
+        }
+
+        for (SaleEmployeeCommissionDTO commissionDTO : saleDTO.getEmployeeCommissions()) {
+            if (commissionDTO.getUserBusinessId() == null) {
+                continue;
+            }
+            UsersBusiness userBusiness = usersAppRepository.findById(commissionDTO.getUserBusinessId()).orElse(null);
+            if (userBusiness == null) {
+                continue;
+            }
+
+            SaleEmployeeCommission commission = new SaleEmployeeCommission();
+            commission.setSale(sale);
+            commission.setBusiness(business);
+            commission.setUserBusiness(userBusiness);
+            commission.setProductId(commissionDTO.getProductId());
+            commission.setProductName(commissionDTO.getProductName());
+            commission.setQuantity(commissionDTO.getQuantity());
+            commission.setSaleBaseAmount(commissionDTO.getSaleBaseAmount() == null ? java.math.BigDecimal.ZERO : commissionDTO.getSaleBaseAmount());
+            commission.setCommissionPercent(commissionDTO.getCommissionPercent() == null ? java.math.BigDecimal.ZERO : commissionDTO.getCommissionPercent());
+            commission.setSplitPercent(commissionDTO.getSplitPercent() == null ? java.math.BigDecimal.valueOf(100) : commissionDTO.getSplitPercent());
+            commission.setCommissionAmount(commissionDTO.getCommissionAmount() == null ? java.math.BigDecimal.ZERO : commissionDTO.getCommissionAmount());
+            commission.setPaid(Boolean.TRUE.equals(commissionDTO.getPaid()));
+            commission.setPaidAt(commissionDTO.getPaidAt());
+            commission.setCreatedAt(commissionDTO.getCreatedAt() == null ? Instant.now() : commissionDTO.getCreatedAt());
+            saleEmployeeCommissionRepository.save(commission);
+        }
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<?> syncEmployeeCommissions(String saleId, List<SaleEmployeeCommissionDTO> employeeCommissions) {
+        Sale sale = serviceDBSale.findById(saleId).orElse(null);
+        if (sale == null) {
+            throw new EntidadNoExisteException("La venta con saleID " + saleId + " no existe en la Base de datos");
+        }
+        Business business = sale.getBusiness();
+        if (business == null) {
+            throw new EntidadNoExisteException("La venta con saleID " + saleId + " no tiene negocio asociado");
+        }
+
+        saleEmployeeCommissionRepository.deleteBySale_SaleID(saleId);
+        SaleDTO saleDTO = new SaleDTO();
+        saleDTO.setEmployeeCommissions(employeeCommissions);
+        saveEmployeeCommissions(saleDTO, sale, business);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    private void calculateEmployeeCommissions(Sale sale) {
+        UsersBusiness userBusiness = usersAppRepository.findById(Long.valueOf(sale.getUserId())).orElse(null);
+        if (userBusiness == null || !Boolean.TRUE.equals(userBusiness.getCommissionEligible())) {
+            return;
+        }
+
+        java.math.BigDecimal splitPercent = java.math.BigDecimal.valueOf(
+                userBusiness.getCommissionSplitPercent() == null ? 100.0 : userBusiness.getCommissionSplitPercent());
+
+	        for (ItemForSale item : sale.getItemsList()) {
+	            Product product = serviceDBProduct.findById(item.getProductId()).orElse(null);
+	            if (product == null || product.getCommissionValue() == null
+	                    || product.getCommissionValue().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+	                continue;
+	            }
+	            String commissionType = product.getCommissionType() == null ? "NONE" : product.getCommissionType();
+	            if (!"PERCENT".equalsIgnoreCase(commissionType) && !"FIXED".equalsIgnoreCase(commissionType)) {
+	                continue;
+	            }
+	
+	            java.math.BigDecimal saleBase = java.math.BigDecimal.valueOf(item.getPrice())
+	                    .multiply(java.math.BigDecimal.valueOf(item.getQuantity()));
+	            java.math.BigDecimal commissionBase = "FIXED".equalsIgnoreCase(commissionType)
+	                    ? product.getCommissionValue().multiply(java.math.BigDecimal.valueOf(item.getQuantity()))
+	                    : saleBase
+	                            .multiply(product.getCommissionValue())
+	                            .divide(java.math.BigDecimal.valueOf(100), 6, java.math.RoundingMode.HALF_UP);
+	            java.math.BigDecimal commissionAmount = commissionBase
+	                    .multiply(splitPercent)
+	                    .divide(java.math.BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+
+            SaleEmployeeCommission commission = new SaleEmployeeCommission();
+            commission.setSale(sale);
+            commission.setBusiness(sale.getBusiness());
+            commission.setUserBusiness(userBusiness);
+            commission.setProductId(item.getProductId());
+            commission.setProductName(item.getName());
+            commission.setQuantity(item.getQuantity());
+            commission.setSaleBaseAmount(saleBase.setScale(2, java.math.RoundingMode.HALF_UP));
+            commission.setCommissionPercent(product.getCommissionValue());
+            commission.setSplitPercent(splitPercent);
+            commission.setCommissionAmount(commissionAmount);
+            commission.setPaid(false);
+            commission.setCreatedAt(Instant.now());
+            saleEmployeeCommissionRepository.save(commission);
+        }
+    }
+
+    private boolean isEmployeeCommissionsEnabled(Long businessId) {
+        var configuration = businessConfigurationRepository.findByKey("Functions.EmployeeCommissions", businessId);
+        if (configuration == null || configuration.getValue() == null) {
+            return false;
+        }
+
+        return "true".equalsIgnoreCase(configuration.getValue().trim());
+    }
+
     /**
      * Updates a sale in the database.
      *
@@ -245,6 +372,10 @@ public class SaleService implements ISaleService {
                     serviceDBProduct.reduceInventory(item.getProductId(), item.getQuantity());
                 }
                 sale = this.serviceDBSale.save(sale);
+                if (saleDTO.getEmployeeCommissions() != null) {
+                    this.saleEmployeeCommissionRepository.deleteBySale_SaleID(sale.getSaleID());
+                    saveEmployeeCommissions(saleDTO, sale, business);
+                }
                 saleDTO.setSaleID(sale.getSaleID());
                 terminal.setLastTransmision(Instant.now());
                 serviceDBTerminal.save(terminal);

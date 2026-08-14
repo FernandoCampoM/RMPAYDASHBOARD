@@ -103,6 +103,7 @@ public class UsersBusinesService implements IUsersBusinessService{
             }
             UsersBusiness usersBusiness = this.mapper.map(prmUsersBusiness, UsersBusiness.class);
             usersBusiness.setUserPermissions(new ArrayList<>());
+            applyCommissionConfiguration(usersBusiness, prmUsersBusiness);
             
             if(EmployeeRole.fromId(prmUsersBusiness.getRoleId())==null){
                 usersBusiness.setRoleId(EmployeeRole.USER.getId()); //Default role is 2
@@ -151,6 +152,7 @@ public class UsersBusinesService implements IUsersBusinessService{
                 usersBusiness.setPassword(prmUsersBusiness.getPassword());
                 usersBusiness.setEnable(prmUsersBusiness.getEnable());
                 usersBusiness.setCostHour(prmUsersBusiness.getCostHour());
+                applyCommissionConfiguration(usersBusiness, prmUsersBusiness);
                 usersBusiness.setUpdatedAt(LocalDateTime.now());
                 usersBusiness.setRoleId(prmUsersBusiness.getRoleId());
                 usersBusiness.getUserPermissions().clear();
@@ -380,7 +382,7 @@ public class UsersBusinesService implements IUsersBusinessService{
             try {    
             List<UserBusiness_Product> ubpList=this.ubpServices.findByObjUserAndDownload(objUser,false);
             for(UserBusiness_Product ubp:ubpList){
-                productDTOs.add(this.mapper.map(ubp.getObjProduct(), ProductDTO.class));
+                productDTOs.add(ProductDTO.tOProduct(ubp.getObjProduct()));
                 //ubp.setDownload(true);
                 //this.ubpServices.save(ubp);
             }
@@ -740,6 +742,18 @@ public static Duration calculateDuration(LocalDate startDate, LocalTime startTim
         LocalDateTime endDateTime = LocalDateTime.of(endDate, endTime);
         return Duration.between(startDateTime, endDateTime);
     }
+
+private void applyCommissionConfiguration(UsersBusiness usersBusiness, UsersBusinessDTO prmUsersBusiness) {
+    usersBusiness.setCommissionEligible(Boolean.TRUE.equals(prmUsersBusiness.getCommissionEligible()));
+    Double splitPercent = prmUsersBusiness.getCommissionSplitPercent();
+    if (splitPercent == null || splitPercent < 0) {
+        splitPercent = 100.0;
+    }
+    if (splitPercent > 100) {
+        splitPercent = 100.0;
+    }
+    usersBusiness.setCommissionSplitPercent(splitPercent);
+}
 
 /**
  * Retrieves the business configuration associated with the given user business ID.

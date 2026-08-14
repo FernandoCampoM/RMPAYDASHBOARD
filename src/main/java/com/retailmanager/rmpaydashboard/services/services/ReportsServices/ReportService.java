@@ -6,8 +6,10 @@ import com.retailmanager.rmpaydashboard.exceptionControllers.exceptions.EntidadN
 import com.retailmanager.rmpaydashboard.models.ActivityLog;
 import com.retailmanager.rmpaydashboard.models.Business;
 import com.retailmanager.rmpaydashboard.models.EntryExit;
+import com.retailmanager.rmpaydashboard.models.ItemForSale;
 import com.retailmanager.rmpaydashboard.models.Product;
 import com.retailmanager.rmpaydashboard.models.Sale;
+import com.retailmanager.rmpaydashboard.models.SaleEmployeeCommission;
 import com.retailmanager.rmpaydashboard.models.Transactions;
 import com.retailmanager.rmpaydashboard.models.Interface.LaborMetricsProjection;
 import com.retailmanager.rmpaydashboard.models.enums.ActivityType;
@@ -20,6 +22,7 @@ import com.retailmanager.rmpaydashboard.repositories.EntryExitRepository;
 import com.retailmanager.rmpaydashboard.repositories.InvoiceRepository;
 import com.retailmanager.rmpaydashboard.repositories.ProductRepository;
 import com.retailmanager.rmpaydashboard.repositories.SaleRepository;
+import com.retailmanager.rmpaydashboard.repositories.SaleEmployeeCommissionRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalPayAtTableRepository;
 import com.retailmanager.rmpaydashboard.repositories.TerminalRepository;
 import com.retailmanager.rmpaydashboard.repositories.TransactionsRepository;
@@ -57,6 +60,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -75,6 +79,8 @@ public class ReportService implements IReportService {
     private ProductRepository serviceDBProduct;
     @Autowired
     private SaleRepository serviceDBSale;
+    @Autowired
+    private SaleEmployeeCommissionRepository saleEmployeeCommissionRepository;
     @Autowired
     private TransactionsRepository serviceDBTransactions;
 
@@ -366,6 +372,128 @@ private TerminalPayAtTableRepository terminalPayAtTableRepository;
             dailySummaryDTO.setUserTips(tipsByUsers);
         } 
         return new ResponseEntity<>(dailySummaryDTO, HttpStatus.OK);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+	    public ResponseEntity<?> getCommissions(Long businessId, Instant startUtc, Instant endUtc) {
+	        if (businessId == null) {
+	            throw new EntidadNoExisteException("El businessId no puede ser nulo");
+        }
+        if (!this.serviceDBBusiness.existsById(businessId)) {
+            throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
+        }
+
+        CommissionReportDTO report = new CommissionReportDTO();
+        if (!isEmployeeCommissionsEnabled(businessId)) {
+            return new ResponseEntity<>(report, HttpStatus.OK);
+        }
+
+        List<SaleEmployeeCommission> commissions = saleEmployeeCommissionRepository.findReport(businessId, startUtc, endUtc);
+        Map<Long, CommissionReportDTO.EmployeeCommissionSummaryDTO> byEmployee = new HashMap<>();
+
+        for (SaleEmployeeCommission commission : commissions) {
+            Long userBusinessId = commission.getUserBusiness().getUserBusinessId();
+            CommissionReportDTO.EmployeeCommissionSummaryDTO summary = byEmployee.computeIfAbsent(userBusinessId, key -> {
+                CommissionReportDTO.EmployeeCommissionSummaryDTO employee = new CommissionReportDTO.EmployeeCommissionSummaryDTO();
+                employee.setUserBusinessId(userBusinessId);
+                employee.setUsername(commission.getUserBusiness().getUsername());
+                return employee;
+            });
+
+            BigDecimal saleBase = commission.getSaleBaseAmount() == null ? BigDecimal.ZERO : commission.getSaleBaseAmount();
+            BigDecimal amount = commission.getCommissionAmount() == null ? BigDecimal.ZERO : commission.getCommissionAmount();
+            summary.setTotalSalesBase(summary.getTotalSalesBase().add(saleBase));
+            summary.setTotalCommission(summary.getTotalCommission().add(amount));
+            summary.setSalesCount(summary.getSalesCount() + 1);
+            report.setTotalSalesBase(report.getTotalSalesBase().add(saleBase));
+            report.setTotalCommission(report.getTotalCommission().add(amount));
+        }
+
+        report.setEmployeeCommissions(byEmployee.values().stream()
+                .sorted(Comparator.comparing(CommissionReportDTO.EmployeeCommissionSummaryDTO::getTotalCommission).reversed())
+                .collect(Collectors.toList()));
+	
+	        return new ResponseEntity<>(report, HttpStatus.OK);
+	    }
+
+	    @Override
+	    @Transactional(readOnly = true)
+	    public ResponseEntity<?> getCommissionsAudit(Long businessId, Instant startUtc, Instant endUtc) {
+	        if (businessId == null) {
+	            throw new EntidadNoExisteException("El businessId no puede ser nulo");
+	        }
+	        if (!this.serviceDBBusiness.existsById(businessId)) {
+	            throw new EntidadNoExisteException("El Business con businessId " + businessId + " no existe en la Base de datos");
+	        }
+
+	        CommissionAuditReportDTO report = new CommissionAuditReportDTO();
+	        if (!isEmployeeCommissionsEnabled(businessId)) {
+	            return new ResponseEntity<>(report, HttpStatus.OK);
+	        }
+
+	        List<SaleEmployeeCommission> commissions = saleEmployeeCommissionRepository.findReport(businessId, startUtc, endUtc);
+	        Map<String, CommissionAuditReportDTO.CommissionSaleAuditDTO> bySale = new HashMap<>();
+
+	        for (SaleEmployeeCommission commission : commissions) {
+	            if (commission.getSale() == null) {
+	                continue;
+	            }
+
+	            String saleId = commission.getSale().getSaleID();
+	            CommissionAuditReportDTO.CommissionSaleAuditDTO saleAudit = bySale.computeIfAbsent(saleId, key -> {
+	                CommissionAuditReportDTO.CommissionSaleAuditDTO audit = new CommissionAuditReportDTO.CommissionSaleAuditDTO();
+	                audit.setSaleId(saleId);
+	                audit.setSaleDate(commission.getSale().getSaleEndDate() == null
+	                        ? commission.getSale().getSaleCreationDate()
+	                        : commission.getSale().getSaleEndDate());
+	                audit.setItems(toCommissionAuditItems(commission.getSale().getItemsList()));
+	                return audit;
+	            });
+
+	            BigDecimal amount = commission.getCommissionAmount() == null ? BigDecimal.ZERO : commission.getCommissionAmount();
+	            saleAudit.setCommissionTotal(saleAudit.getCommissionTotal().add(amount));
+	            report.setTotalCommission(report.getTotalCommission().add(amount));
+
+	            CommissionAuditReportDTO.CommissionAuditShareDTO share = new CommissionAuditReportDTO.CommissionAuditShareDTO();
+	            share.setUserBusinessId(commission.getUserBusiness().getUserBusinessId());
+	            share.setUsername(commission.getUserBusiness().getUsername());
+	            share.setSplitPercent(commission.getSplitPercent() == null ? BigDecimal.ZERO : commission.getSplitPercent());
+	            share.setCommissionAmount(amount);
+	            share.setPaid(Boolean.TRUE.equals(commission.getPaid()));
+	            saleAudit.getShares().add(share);
+	        }
+
+	        report.setSales(bySale.values().stream()
+	                .sorted(Comparator.comparing(CommissionAuditReportDTO.CommissionSaleAuditDTO::getSaleDate,
+	                        Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+	                .collect(Collectors.toList()));
+
+	        return new ResponseEntity<>(report, HttpStatus.OK);
+	    }
+
+	    private List<CommissionAuditReportDTO.CommissionAuditItemDTO> toCommissionAuditItems(List<ItemForSale> items) {
+	        if (items == null) {
+	            return new ArrayList<>();
+	        }
+
+	        return items.stream().map(item -> {
+	            CommissionAuditReportDTO.CommissionAuditItemDTO dto = new CommissionAuditReportDTO.CommissionAuditItemDTO();
+	            dto.setProductId(item.getProductId());
+	            dto.setName(item.getName());
+	            dto.setQuantity(item.getQuantity());
+	            dto.setPrice(BigDecimal.valueOf(item.getPrice()));
+	            return dto;
+	        }).collect(Collectors.toList());
+	    }
+	
+	    private boolean isEmployeeCommissionsEnabled(Long businessId) {
+        var configuration = serviceDBBusinessConfiguration.findByKey("Functions.EmployeeCommissions", businessId);
+        if (configuration == null || configuration.getValue() == null) {
+            return false;
+        }
+
+        return "true".equalsIgnoreCase(configuration.getValue().trim());
     }
 
     /**

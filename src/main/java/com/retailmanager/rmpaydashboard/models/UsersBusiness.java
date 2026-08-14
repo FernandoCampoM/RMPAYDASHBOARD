@@ -44,6 +44,10 @@ public class UsersBusiness {
     private Boolean download=false;
     @Column(nullable = true)
     private Double costHour;
+    @Column(nullable = true)
+    private Boolean commissionEligible = false;
+    @Column(nullable = true)
+    private Double commissionSplitPercent = 100.0;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     @Column(columnDefinition = "INT DEFAULT 2")

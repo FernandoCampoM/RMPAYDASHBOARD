@@ -58,6 +58,9 @@ public class ProductDTO {
     private boolean municipal;
     @NotNull(message = "{product.reducedTax.null}")
     private boolean reducedTax;
+    private String commissionType;
+    @DecimalMin(value = "0.00", message = "{product.commissionValue.min}")
+    private BigDecimal commissionValue;
     
     @NotNull(message = "{product.quantity.null}")
     private int quantity;
@@ -100,6 +103,8 @@ public class ProductDTO {
         objProduct.setCreatedAt(product.getCreatedAt());
         objProduct.setUpdatedAt(product.getUpdatedAt());
         objProduct.setReducedTax(product.isReducedTax());
+        objProduct.setCommissionType(product.getCommissionType() == null ? "NONE" : product.getCommissionType());
+        objProduct.setCommissionValue(product.getCommissionValue() == null ? BigDecimal.ZERO : product.getCommissionValue());
         objProduct.setModifierGroupIds(product.getModifierGroups() == null
                 ? new ArrayList<>()
                 : product.getModifierGroups().stream()

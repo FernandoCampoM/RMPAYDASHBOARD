@@ -21,6 +21,8 @@ public interface IReportService {
      * @return
      */
     public ResponseEntity<?> getTips(Long businessId, Instant startUtc, Instant endUtc);
+    public ResponseEntity<?> getCommissions(Long businessId, Instant startUtc, Instant endUtc);
+    public ResponseEntity<?> getCommissionsAudit(Long businessId, Instant startUtc, Instant endUtc);
     public ResponseEntity<?> getTaxes(Long businessId, Instant startUtc, Instant endUtc);
 
     public ResponseEntity<?> getReceipts(Long businessId, Instant startUtc, Instant endUtc);

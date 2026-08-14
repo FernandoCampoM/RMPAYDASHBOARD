@@ -44,5 +44,7 @@ public class UsersBusinessDTO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updatedAt;
     private int roleId;
+    private Boolean commissionEligible;
+    private Double commissionSplitPercent;
     //List<UserPermissionDTO> userPermissions;
 }

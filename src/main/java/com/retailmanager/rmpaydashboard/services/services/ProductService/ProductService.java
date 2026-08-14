@@ -121,6 +121,7 @@ public class ProductService implements IProductService {
                 }
             }
             Product objProduct = this.mapperBase.map(prmProduct, Product.class);
+            applyCommissionConfiguration(objProduct, prmProduct);
             objProduct.setCategory(optionalCategory.get());
             setModifierGroups(objProduct, prmProduct.getModifierGroupIds(), optionalCategory.get().getBusiness().getBusinessId());
             objProduct.setCreatedAt(Instant.now());
@@ -189,6 +190,7 @@ public class ProductService implements IProductService {
         objProduct.setEstatal(prmProduct.isEstatal());
         objProduct.setMunicipal(prmProduct.isMunicipal());
         objProduct.setReducedTax(prmProduct.isReducedTax());
+        applyCommissionConfiguration(objProduct, prmProduct);
         objProduct.setEnable(prmProduct.getEnable());
         objProduct.setQuantity(prmProduct.getQuantity());
         objProduct.setMinimumLevel(prmProduct.getMinimumLevel());
@@ -373,6 +375,7 @@ public class ProductService implements IProductService {
             if(objProduct==null){
                 objProduct = this.mapperBase.map(productDTO, Product.class);
             }
+            applyCommissionConfiguration(objProduct, productDTO);
             String  categoryName=productDTO.getNameCategory();
             Long categoryId=0L;
             if(categoryName!=null){
@@ -714,4 +717,25 @@ public class ProductService implements IProductService {
 
         product.setModifierGroups(modifierGroups);
     }
-}
+
+	    private void applyCommissionConfiguration(Product product, ProductDTO productDTO) {
+	        String commissionType = productDTO.getCommissionType();
+	        if (commissionType == null || commissionType.isBlank()) {
+	            commissionType = "NONE";
+	        }
+	        commissionType = commissionType.trim().toUpperCase();
+	        if (!"PERCENT".equals(commissionType) && !"FIXED".equals(commissionType)) {
+	            commissionType = "NONE";
+	        }
+	        java.math.BigDecimal commissionValue = productDTO.getCommissionValue() == null
+	                ? java.math.BigDecimal.ZERO
+	                : productDTO.getCommissionValue();
+	        if ("PERCENT".equals(commissionType)
+	                && commissionValue.compareTo(java.math.BigDecimal.valueOf(100)) > 0) {
+	            throw new IllegalArgumentException("La comisión porcentual no puede superar el 100%");
+	        }
+	
+	        product.setCommissionType(commissionType);
+	        product.setCommissionValue(commissionValue);
+	    }
+	}

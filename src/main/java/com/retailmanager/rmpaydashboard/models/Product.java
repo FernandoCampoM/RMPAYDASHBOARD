@@ -50,6 +50,10 @@ public class Product {
     private boolean municipal;
     @Column(nullable = false, unique = false,columnDefinition = "bit DEFAULT 0") 
     private boolean reducedTax;
+    @Column(nullable = true, length = 20)
+    private String commissionType = "NONE";
+    @Column(nullable = true, precision = 10, scale = 2)
+    private BigDecimal commissionValue = BigDecimal.ZERO;
     
     @Column(nullable = false, unique = false)
     private int minimumLevel;

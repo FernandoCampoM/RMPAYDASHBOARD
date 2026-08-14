@@ -3,6 +3,9 @@ package com.retailmanager.rmpaydashboard.services.DTO;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.retailmanager.rmpaydashboard.models.Sale;
@@ -75,6 +78,7 @@ private Double tipPercentage;
 
  @NotNull(message = "{sale.remoto.notnull}")
  private Integer remoto;
+ private List<SaleEmployeeCommissionDTO> employeeCommissions;
 
     public static SaleDTO fromEntity(Sale sale) {
         SaleDTO saleDTO = new SaleDTO();
@@ -99,6 +103,11 @@ private Double tipPercentage;
         saleDTO.setTipAmount(sale.getTipAmount());
         saleDTO.setTipPercentage(sale.getTipPercentage());
         saleDTO.setRemoto(sale.getRemoto());
+        saleDTO.setEmployeeCommissions(sale.getEmployeeCommissions() == null
+                ? new ArrayList<>()
+                : sale.getEmployeeCommissions().stream()
+                    .map(SaleEmployeeCommissionDTO::fromEntity)
+                    .collect(Collectors.toList()));
         return saleDTO;
     }
 }
