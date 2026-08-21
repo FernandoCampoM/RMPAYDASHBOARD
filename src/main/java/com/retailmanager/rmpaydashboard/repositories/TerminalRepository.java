@@ -19,6 +19,8 @@ public interface TerminalRepository extends CrudRepository<Terminal, String> {
     Optional<Terminal> findOneBySerial(String serial);
     
     List<Terminal> findByBusiness(Business business);
+    @Query("SELECT t FROM Terminal t WHERE t.business = :business AND t.isPrincipal = true")
+    Optional<Terminal> findPrincipalByBusiness(Business business);
     
     Optional<Terminal> findFirstBySerial(String serial);
     Optional<Terminal> findFirstBySerialAndBusiness(String serial,Business business);

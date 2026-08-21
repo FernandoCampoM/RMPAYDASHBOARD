@@ -64,7 +64,16 @@ public class TokenUtils {
         if(user.getTempAuthId()!=null){
             extra.put("terminalId", user.getTempAuthId());
             Terminal terminal=terminalRepository.findById(user.getTempAuthId()).orElseThrow(()->new EntidadNoExisteException("Terminal no encontrada con id: "+user.getTempAuthId()));
-            extra.put("terminalExpirationDate", terminal.getExpirationDate().toString());
+            Terminal expirationTerminal = terminalRepository.findPrincipalByBusiness(terminal.getBusiness())
+                    .orElse(terminal);
+            Instant terminalExpiration = expirationTerminal.getExpirationDate();
+            if (terminalExpiration != null) {
+                extra.put("terminalExpirationDate", terminalExpiration.toString());
+                Date terminalExpirationDate = Date.from(terminalExpiration);
+                if (terminalExpirationDate.before(expirationDate)) {
+                    expirationDate = terminalExpirationDate;
+                }
+            }
         }
         
         
