@@ -128,12 +128,15 @@ public class ProductService implements IProductService {
             objProduct.setUpdatedAt(Instant.now());
             if(objProduct!=null){
                 objProduct = this.serviceDBProducts.save(objProduct);
-                for(UsersBusiness usersBusiness:objProduct.getCategory().getBusiness().getUsersBusiness()){
-                    UserBusiness_Product ubp = new UserBusiness_Product();
-                    ubp.setObjProduct(objProduct);
-                    ubp.setDownload(false);
-                    ubp.setObjUser(usersBusiness);
-                    ubpServices.save(ubp);
+                List<UsersBusiness> usersBusinessList = objProduct.getCategory().getBusiness().getUsersBusiness();
+                if (usersBusinessList != null) {
+                    for(UsersBusiness usersBusiness: usersBusinessList){
+                        UserBusiness_Product ubp = new UserBusiness_Product();
+                        ubp.setObjProduct(objProduct);
+                        ubp.setDownload(false);
+                        ubp.setObjUser(usersBusiness);
+                        ubpServices.save(ubp);
+                    }
                 }
             }
             
